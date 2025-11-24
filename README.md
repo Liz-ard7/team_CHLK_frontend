@@ -1,3 +1,7 @@
-# Team CHLK
+# Team CHLK Frontend (Vue 3 + Vite)
 
-Michael Distortion
+## Members
+* Elizabeth North
+* Kelly Hong
+* Haolei Zhang
+* Calvin Farrow
