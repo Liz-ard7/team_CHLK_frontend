@@ -23,4 +23,8 @@ For writing progress points especially while we haven't linked backend actions o
 * Eventually, when view transitions are created, then the initial values in each of the fields should be that of the memory being edited
 * The EditMemory is available as a tab at the top just to be able to view it right now, but later on the view will be secured behind a button in a different view
 
+### Group (Kelly)
+* The Memories section of the view will be populated by the memories of the group later when backend storage is connected to everything
+* The Group is available as a tab at the top just to be able to view it right now, but later on the view will be secured behind a button in a different view
+
 

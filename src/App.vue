@@ -6,6 +6,7 @@
       <router-link to="/create-group">Create Group</router-link>
       <router-link to="/create-memory">Create Memory</router-link>
       <router-link to="/edit-memory">Edit Memory</router-link>
+      <router-link to="/group">Group</router-link>
     </nav>
     <router-view />
   </div>
