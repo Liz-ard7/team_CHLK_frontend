@@ -5,6 +5,7 @@
       <router-link to="/about">About</router-link>
       <router-link to="/create-group">Create Group</router-link>
       <router-link to="/create-memory">Create Memory</router-link>
+      <router-link to="/edit-memory">Edit Memory</router-link>
     </nav>
     <router-view />
   </div>

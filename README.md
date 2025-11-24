@@ -17,3 +17,10 @@ For writing progress points especially while we haven't linked backend actions o
 
 ### CreateMemory (Kelly)
 * The UI Sketches have a "+ Create Group" button in the dropdown menu, but this may complicate things in that the Create! button within the "Create Group" tab would then need to remember which view to transition to --> back to the "Create Memory" tab or to the view of the single group itself. I made the decision to remove the button for simplicity
+* The CreateMemory is available as a tab at the top just to be able to view it right now, but later on the view will be secured behind a button in a different view
+
+### EditMemory (Kelly)
+* Eventually, when view transitions are created, then the initial values in each of the fields should be that of the memory being edited
+* The EditMemory is available as a tab at the top just to be able to view it right now, but later on the view will be secured behind a button in a different view
+
+
