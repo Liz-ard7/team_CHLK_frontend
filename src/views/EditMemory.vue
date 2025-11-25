@@ -1,3 +1,83 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import { MemoryService, GroupService, type ID } from '../api/services';
+
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
+const selectedGroup = ref('');
+const memoryTitle = ref('');
+const userGroups = ref<Array<{id: ID, name: string}>>([]);
+
+onMounted(async () => {
+  if (!auth.userId) return;
+  try {
+    // Load memory details
+    const memoryId = route.params.id as string;
+    const memRes = await MemoryService.get(memoryId);
+    const memory = memRes[0]?.memory;
+    if (memory) {
+      memoryTitle.value = memory.title;
+      selectedGroup.value = memory.group;
+    }
+
+    // Load user groups
+    const groupsRes = await GroupService.listForUser(auth.userId);
+    const groupIds = groupsRes[0]?.groups || [];
+
+    const groupDetails = await Promise.all(
+      groupIds.map(async (gid: string) => {
+        try {
+          const details = await GroupService.getDetails(gid);
+          return { id: gid, name: details[0]?.groupName || gid };
+        } catch {
+          return { id: gid, name: gid };
+        }
+      })
+    );
+    userGroups.value = groupDetails;
+  } catch (err) {
+    console.error('Failed to load memory:', err);
+  }
+});
+
+const isFormValid = computed(() => {
+  return (
+    selectedGroup.value.trim() !== '' &&
+    memoryTitle.value.trim() !== ''
+  );
+});
+
+async function editMemory() {
+  if (!isFormValid.value || !auth.userId) return;
+
+  try {
+    const memoryId = route.params.id as string;
+    await MemoryService.editTitle(memoryId, auth.userId, memoryTitle.value);
+    router.push(`/memory/${memoryId}`);
+  } catch (err) {
+    console.error('Failed to edit memory:', err);
+    alert('Failed to edit memory. Please try again.');
+  }
+}
+
+async function deleteMemory() {
+  if (!confirm('Are you sure you want to delete this memory?')) return;
+  if (!auth.userId) return;
+
+  try {
+    const memoryId = route.params.id as string;
+    await MemoryService.deleteMemory(memoryId, auth.userId);
+    router.push('/timeline');
+  } catch (err) {
+    console.error('Failed to delete memory:', err);
+    alert('Failed to delete memory. Please try again.');
+  }
+}
+</script>
+
 <template>
   <div class="edit-memory">
     <div class="header">
@@ -7,26 +87,13 @@
     <form class="memory-form" @submit.prevent="editMemory">
       <div class="form-row">
         <label for="groupSelect">Group</label>
-        <select id="groupSelect" v-model="selectedGroup" required>
+        <select id="groupSelect" v-model="selectedGroup" required disabled>
           <option value="" disabled>Select a group</option>
-          <option v-for="group in userGroups" :key="group" :value="group">
-            {{ group }}
+          <option v-for="group in userGroups" :key="group.id" :value="group.id">
+            {{ group.name }}
           </option>
         </select>
-      </div>
-      <div class="form-row">
-        <label for="memoryDate">Date</label>
-        <input
-          id="memoryDate"
-          v-model="memoryDate"
-          type="text"
-          placeholder="MM/DD/YYYY"
-          maxlength="10"
-          required
-          @input="handleDateInput"
-          @blur="validateDate"
-        />
-        <small v-if="dateError" class="error">{{ dateError }}</small>
+        <small class="hint">Group cannot be changed after creation</small>
       </div>
       <div class="form-row">
         <label for="memoryTitle">Title</label>
@@ -39,107 +106,11 @@
         />
       </div>
       <div class="actions">
-        <button type="submit" class="edit-btn" :disabled="!isFormValid">Edit Memory</button>
+        <button type="submit" class="edit-btn" :disabled="!isFormValid">Save Changes</button>
       </div>
     </form>
   </div>
 </template>
-
-<script setup>
-import { ref, computed } from 'vue';
-
-const selectedGroup = ref('');
-const memoryDate = ref('');
-const memoryTitle = ref('');
-const dateError = ref('');
-const isDateValid = ref(false);
-
-// Placeholder: will be populated from backend/store after auth
-const userGroups = ref([]);
-
-function handleDateInput(e) {
-  let value = e.target.value.replace(/\D/g, '');
-  if (value.length >= 2) {
-    value = value.slice(0, 2) + '/' + value.slice(2);
-  }
-  if (value.length >= 5) {
-    value = value.slice(0, 5) + '/' + value.slice(5, 9);
-  }
-  memoryDate.value = value;
-  dateError.value = '';
-  isDateValid.value = false;
-}
-
-function validateDate() {
-  const datePattern = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-  
-  if (!memoryDate.value) {
-    dateError.value = '';
-    isDateValid.value = false;
-    return;
-  }
-  
-  if (!datePattern.test(memoryDate.value)) {
-    dateError.value = 'Invalid date format. Use MM/DD/YYYY.';
-    isDateValid.value = false;
-    return;
-  }
-  
-  const [month, day, year] = memoryDate.value.split('/').map(Number);
-  const inputDate = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  // Check if date is valid (e.g., not 13/32/2025)
-  if (
-    inputDate.getMonth() !== month - 1 ||
-    inputDate.getDate() !== day ||
-    inputDate.getFullYear() !== year
-  ) {
-    dateError.value = 'Invalid date.';
-    isDateValid.value = false;
-    return;
-  }
-  
-  if (inputDate > today) {
-    dateError.value = 'Date cannot be in the future.';
-    isDateValid.value = false;
-    return;
-  }
-  
-  dateError.value = '';
-  isDateValid.value = true;
-}
-
-const isFormValid = computed(() => {
-  return (
-    selectedGroup.value.trim() !== '' &&
-    memoryTitle.value.trim() !== '' &&
-    isDateValid.value &&
-    !dateError.value
-  );
-});
-
-function editMemory() {
-  if (!isFormValid.value) return;
-  
-  const payload = {
-    group: selectedGroup.value,
-    date: memoryDate.value,
-    title: memoryTitle.value
-  };
-  console.log('Editing memory:', payload);
-  
-  // In real implementation, would update the memory via API
-}
-
-function deleteMemory() {
-  if (confirm('Are you sure you want to delete this memory?')) {
-    console.log('Deleting memory');
-    // In real implementation, would delete via API and navigate away
-  }
-}
-</script>
 
 <style scoped>
 .edit-memory {
@@ -196,6 +167,14 @@ function deleteMemory() {
 }
 .form-row select {
   cursor: pointer;
+}
+.form-row select:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+.hint {
+  font-size: 0.7rem;
+  color: #666;
 }
 .actions {
   position: absolute;

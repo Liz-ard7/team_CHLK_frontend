@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { GroupService, MemoryService } from '../api/services';
+import { GroupService } from '../api/services';
 
 const auth = useAuthStore();
 const groups = ref<any[]>([]);

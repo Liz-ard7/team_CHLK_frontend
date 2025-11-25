@@ -1,33 +1,42 @@
+<script setup lang="ts">
+import { useAuthStore } from './stores/auth';
+import { useRouter } from 'vue-router';
+
+const auth = useAuthStore();
+const router = useRouter();
+
+const handleLogout = () => {
+  auth.logout();
+  router.push('/login');
+};
+</script>
+
 <template>
-  <div id="app">
-    <nav class="nav">
-      <router-link to="/">Home</router-link>
-      <router-link to="/about">About</router-link>
-      <router-link to="/create-group">Create Group</router-link>
-      <router-link to="/create-memory">Create Memory</router-link>
-      <router-link to="/edit-memory">Edit Memory</router-link>
-      <router-link to="/group">Group</router-link>
+  <div class="app-container">
+    <nav v-if="auth.userId" class="navbar">
+      <div class="logo">CHLK</div>
+      <div class="links">
+        <router-link to="/timeline">Timeline</router-link>
+        <router-link to="/groups">Your Groups</router-link>
+        <a href="#" @click.prevent="handleLogout">Logout</a>
+      </div>
     </nav>
-    <router-view />
+    <main>
+      <router-view />
+    </main>
   </div>
 </template>
 
-<script setup>
-</script>
-
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  margin: 0 auto;
-  max-width: 800px;
-  padding: 1rem;
-}
-.nav {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.nav a.router-link-active {
-  font-weight: bold;
-}
+/* Basic Global Reset */
+body { margin: 0; font-family: sans-serif; background-color: #f4f4f9; color: #333; }
+.app-container { max-width: 800px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+.navbar { background: #333; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+.navbar a { color: white; margin-left: 1rem; text-decoration: none; }
+main { padding: 2rem; flex: 1; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+button { cursor: pointer; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 1rem; }
+button:hover { background: #0056b3; }
+input, textarea, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.error { color: red; margin-bottom: 10px; }
+h1 { margin-top: 0; }
 </style>

@@ -1,3 +1,112 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import { GroupService } from '../api/services';
+
+const auth = useAuthStore();
+const router = useRouter();
+const groupName = ref('');
+const inviteDraft = ref('');
+const selectedUsers = ref<string[]>([]);
+const suggestionsSource = ref<string[]>([]); // Will be populated via backend
+const highlightedIndex = ref(-1);
+const userEditedName = ref(false);
+
+watch(groupName, (val, old) => {
+  if (old !== undefined && val !== `${auth.username}'s group`) {
+    userEditedName.value = true;
+  }
+});
+
+watch(() => auth.username, (newName) => {
+  if (!userEditedName.value && newName) {
+    groupName.value = `${newName}'s group`;
+  }
+});
+
+const filteredSuggestions = computed(() => {
+  const q = inviteDraft.value.trim().toLowerCase();
+  if (!q) return [];
+  return suggestionsSource.value.filter((u: string) =>
+    u.toLowerCase().includes(q) && !selectedUsers.value.includes(u)
+  ).slice(0, 10);
+});
+
+watch(inviteDraft, (v) => {
+  if (!v.trim()) highlightedIndex.value = -1;
+});
+
+function addInvite(value?: string) {
+  const v = (value || inviteDraft.value).trim();
+  if (!v) return;
+  const match = suggestionsSource.value.find((u: string) => u.toLowerCase() === v.toLowerCase());
+  const final = match || v;
+  if (!selectedUsers.value.includes(final)) selectedUsers.value.push(final);
+  inviteDraft.value = '';
+  highlightedIndex.value = -1;
+}
+
+function removeInvite(index: number) {
+  selectedUsers.value.splice(index, 1);
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  const list = filteredSuggestions.value;
+  const validKeys = ['ArrowDown','ArrowUp','Enter','Escape'];
+  if (validKeys.indexOf(e.key) !== -1) e.preventDefault();
+  if (e.key === 'ArrowDown') {
+    if (!list.length) return;
+    highlightedIndex.value = (highlightedIndex.value + 1) % list.length;
+  } else if (e.key === 'ArrowUp') {
+    if (!list.length) return;
+    highlightedIndex.value = (highlightedIndex.value - 1 + list.length) % list.length;
+  } else if (e.key === 'Enter') {
+    if (highlightedIndex.value >= 0 && list[highlightedIndex.value]) {
+      addInvite(list[highlightedIndex.value]);
+    } else if (list.length === 1) {
+      addInvite(list[0]);
+    } else {
+      const exact = list.find((u: string) => u.toLowerCase() === inviteDraft.value.trim().toLowerCase());
+      if (exact) addInvite(exact);
+    }
+  } else if (e.key === 'Escape') {
+    inviteDraft.value = '';
+    highlightedIndex.value = -1;
+  }
+}
+
+function selectSuggestion(user: string) {
+  addInvite(user);
+}
+
+async function createGroup() {
+  if (!auth.userId) return;
+
+  const finalName = groupName.value.trim() || `${auth.username}'s group`;
+
+  try {
+    // 1. Create Group
+    const res = await GroupService.create(auth.userId, finalName);
+    const gid = res.group;
+
+    // 2. Invite users
+    for (const userIdOrName of selectedUsers.value) {
+      try {
+        await GroupService.invite(auth.userId, gid, userIdOrName);
+      } catch (err) {
+        console.warn(`Failed to invite ${userIdOrName}:`, err);
+      }
+    }
+
+    // Navigate to new group
+    router.push(`/groups/${gid}`);
+  } catch (err) {
+    console.error('Failed to create group:', err);
+  }
+}
+</script>
+
 <template>
   <div class="create-group">
     <h1>Create a Group</h1>
@@ -8,7 +117,7 @@
           id="groupName"
           v-model="groupName"
           type="text"
-          :placeholder="`${userStore.username}'s group`"
+          :placeholder="`${auth.username}'s group`"
           required
         />
       </div>
@@ -24,7 +133,7 @@
           <input
             v-model="inviteDraft"
             type="text"
-            placeholder="Start typing a username"
+            placeholder="Start typing a username or user ID"
             @keydown="onKeyDown"
           />
           <ul v-if="filteredSuggestions.length" class="suggestions">
@@ -44,96 +153,6 @@
     </form>
   </div>
 </template>
-
-<script setup>
-import { ref, computed, watch } from 'vue';
-import { useUserStore } from '../stores/user';
-
-const userStore = useUserStore();
-const groupName = ref('');
-const inviteDraft = ref('');
-const selectedUsers = ref([]);
-const suggestionsSource = ref([]); // Populate later via backend
-const highlightedIndex = ref(-1);
-const userEditedName = ref(false);
-
-watch(groupName, (val, old) => {
-  if (old !== undefined && val !== `${userStore.username}'s group`) {
-    userEditedName.value = true;
-  }
-});
-watch(() => userStore.username, (newName) => {
-  if (!userEditedName.value) {
-    groupName.value = `${newName}'s group`;
-  }
-});
-
-const filteredSuggestions = computed(() => {
-  const q = inviteDraft.value.trim().toLowerCase();
-  if (!q) return [];
-  return suggestionsSource.value.filter(u =>
-    u.toLowerCase().includes(q) && !selectedUsers.value.includes(u)
-  ).slice(0, 10);
-});
-
-watch(inviteDraft, (v) => {
-  if (!v.trim()) highlightedIndex.value = -1;
-});
-
-function addInvite(value) {
-  const v = (value || inviteDraft.value).trim();
-  if (!v) return;
-  const match = suggestionsSource.value.find(u => u.toLowerCase() === v.toLowerCase());
-  const final = match || v;
-  if (!selectedUsers.value.includes(final)) selectedUsers.value.push(final);
-  inviteDraft.value = '';
-  highlightedIndex.value = -1;
-}
-
-function removeInvite(index) {
-  selectedUsers.value.splice(index, 1);
-}
-
-function onKeyDown(e) {
-  const list = filteredSuggestions.value;
-  if (['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)) e.preventDefault();
-  if (e.key === 'ArrowDown') {
-    if (!list.length) return;
-    highlightedIndex.value = (highlightedIndex.value + 1) % list.length;
-  } else if (e.key === 'ArrowUp') {
-    if (!list.length) return;
-    highlightedIndex.value = (highlightedIndex.value - 1 + list.length) % list.length;
-  } else if (e.key === 'Enter') {
-    if (highlightedIndex.value >= 0 && list[highlightedIndex.value]) {
-      addInvite(list[highlightedIndex.value]);
-    } else if (list.length === 1) {
-      addInvite(list[0]);
-    } else {
-      const exact = list.find(u => u.toLowerCase() === inviteDraft.value.trim().toLowerCase());
-      if (exact) addInvite(exact);
-    }
-  } else if (e.key === 'Escape') {
-    inviteDraft.value = '';
-    highlightedIndex.value = -1;
-  }
-}
-
-function selectSuggestion(user) {
-  addInvite(user);
-}
-
-function createGroup() {
-  const finalName = groupName.value.trim() || `${userStore.username}'s group`;
-  const payload = {
-    name: finalName,
-    invitees: selectedUsers.value.slice()
-  };
-  console.log('Creating group:', payload);
-  selectedUsers.value = [];
-  groupName.value = `${userStore.username}'s group`;
-  userEditedName.value = false;
-}
-</script>
 
 <style scoped>
 .create-group {
