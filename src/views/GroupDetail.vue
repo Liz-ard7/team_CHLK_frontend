@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { GroupService, type GroupDetails } from '../api/services';
+import { GroupService, AuthService, type GroupDetails } from '../api/services';
 import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
@@ -16,7 +16,20 @@ onMounted(async () => {
 
 const handleInvite = async () => {
     if(!auth.userId) return;
-    await GroupService.invite(auth.userId, route.params.id as string, inviteUser.value);
+
+    // Look up the user ID by username
+    const userLookup = await AuthService.getUserByUsername(inviteUser.value.trim());
+    if (userLookup.length === 0) {
+        alert('User not found!');
+        return;
+    }
+
+    const userIdToInvite = userLookup[0]?.userId;
+    if (!userIdToInvite) {
+        alert('User not found!');
+        return;
+    }
+    await GroupService.invite(auth.userId, route.params.id as string, userIdToInvite);
     alert('Invited!');
     inviteUser.value = '';
 }
