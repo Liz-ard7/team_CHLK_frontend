@@ -36,7 +36,7 @@ export const AuthService = {
   login: (u: string, p: string) => post<{user: ID}>('/UserAuthentication/authenticate', { username: u, password: p }),
   changePhoto: (user: ID, url: string) => post('/UserAuthentication/changePhoto', { user, new_photo: url }),
   userExists: (user: ID) => post<[{exists: boolean}]>('/UserAuthentication/_userExists', { user }),
-  getUserByUsername: (username: string) => post<Array<{userId: ID}>>('/UserAuthentication/_getUserByUsername', { username }),
+  getUserByUsername: (username: string) => post<Array<{userId: ID | null}>>('/UserAuthentication/_getUserByUsername', { username }),
 };
 
 // --- Groups ---
