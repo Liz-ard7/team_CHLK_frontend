@@ -42,6 +42,7 @@ export const AuthService = {
 export const GroupService = {
   create: (user: ID, name: string) => post<{group: ID}>('/Groups/createGroup', { user, name }),
   listForUser: (user: ID) => post<[{groups: ID[]}]>('/Groups/_listGroupsForUser', { user }),
+  listInvitations: (user: ID) => post<[{invitations: ID[]}]>('/Groups/_listInvitationsForUser', { user }),
   getDetails: (groupID: ID) => post<[GroupDetails]>('/Groups/_getGroupDetails', { groupID }),
   invite: (user: ID, group: ID, invitee: ID) => post('/Groups/inviteMember', { user, group, userToInvite: invitee }),
   accept: (user: ID, group: ID) => post('/Groups/acceptInvitation', { user, group }),
@@ -56,7 +57,7 @@ export const MemoryService = {
   listForGroup: (groupID: ID) => post<[{memories: ID[]}]>('/MemoryEntries/_listMemoriesForGroup', { groupID }),
   get: (memoryID: ID) => post<[{memory: Memory}]>('/MemoryEntries/_getMemory', { memoryID }),
   addContribution: (memory: ID, user: ID, desc: string, imgUrls: string) => post('/MemoryEntries/addContribution', { memory, user, description: desc, imageUrls: imgUrls }),
-  editContribution: (memory: ID, user: ID, newDesc: string) => post('/MemoryEntries/editContribution', { memory, user, newDescription: newDesc }),
+  editContribution: (memory: ID, contributionIndex: number, user: ID, newDesc: string) => post('/MemoryEntries/editContribution', { memory, contributionIndex, user, newDescription: newDesc }),
   editTitle: (memory: ID, user: ID, newTitle: string) => post('/MemoryEntries/editTitle', { memory, user, newTitle }),
   deleteMemory: (memory: ID, creator: ID) => post('/MemoryEntries/deleteMemory', { memory, creator }),
 };

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { MemoryService } from '../api/services';
 import { useAuthStore } from '../stores/auth';
@@ -9,11 +9,27 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const description = ref('');
-// In a real app, pre-fill this data by fetching the memory first
+const contributionIndex = ref(parseInt(route.params.idx as string));
+
+// Pre-fill the description from the existing contribution
+onMounted(async () => {
+  const res = await MemoryService.get(route.params.id as string);
+  if (res[0]?.memory) {
+    const contribution = res[0].memory.contributions[contributionIndex.value];
+    if (contribution) {
+      description.value = contribution.description;
+    }
+  }
+});
 
 const submit = async () => {
   if (!auth.userId) return;
-  await MemoryService.editContribution(route.params.id as string, auth.userId, description.value);
+  await MemoryService.editContribution(
+    route.params.id as string,
+    contributionIndex.value,
+    auth.userId,
+    description.value
+  );
   router.push(`/memory/${route.params.id}`);
 };
 </script>

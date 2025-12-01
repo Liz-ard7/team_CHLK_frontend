@@ -28,7 +28,7 @@ const router = createRouter({
     { path: '/memory/:id', name: 'MemoryDetail', component: MemoryDetail },
     { path: '/memory/:id/edit', name: 'EditMemory', component: EditMemory },
     { path: '/memory/:id/contribute', name: 'AddContribution', component: AddContribution },
-    { path: '/memory/:id/contribute/edit', name: 'EditContribution', component: EditContribution },
+    { path: '/memory/:id/contribute/edit/:idx', name: 'EditContribution', component: EditContribution },
     { path: '/profile/:id', name: 'Profile', component: Profile },
   ]
 });

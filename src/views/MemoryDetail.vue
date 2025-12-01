@@ -35,7 +35,7 @@ const isMyContribution = (uid: string) => uid === auth.userId;
           <img v-for="img in c.imageUrls" :src="img" :key="img" class="thumb"/>
         </div>
         <div v-if="isMyContribution(c.user)">
-          <router-link :to="`/memory/${memory.memoryID}/contribute/edit`"><button>Edit Contribution</button></router-link>
+          <router-link :to="`/memory/${memory.memoryID}/contribute/edit/${idx}`"><button>Edit Contribution</button></router-link>
         </div>
       </div>
     </div>
