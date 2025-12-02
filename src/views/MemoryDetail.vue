@@ -85,6 +85,98 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
 </template>
 
 <style scoped>
-.contribution { border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
-.thumb { width: 100px; height: 100px; object-fit: cover; margin-right: 5px; }
+.header h1 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: var(--brown);
+  margin-bottom: 20px;
+}
+
+.header a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.contributions {
+  margin-top: 30px;
+}
+
+.contribution { 
+  background: var(--beige);
+  border: 4px double var(--olive-green);
+  padding: 20px; 
+  margin-bottom: 20px; 
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(139, 115, 85, 0.15);
+  transform: rotate(0.5deg);
+  transition: transform 0.3s ease;
+}
+
+.contribution:nth-child(even) {
+  transform: rotate(-0.5deg);
+}
+
+.contribution:hover {
+  transform: rotate(0deg) scale(1.02);
+}
+
+.user-header {
+  margin-bottom: 10px;
+}
+
+.user-header a {
+  color: var(--brown);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.user-header a:hover {
+  color: var(--olive-green);
+}
+
+.contribution p {
+  color: var(--brown);
+  line-height: 1.6;
+  margin: 10px 0;
+}
+
+.images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.thumb { 
+  width: 100px; 
+  height: 100px; 
+  object-fit: cover; 
+  border: 3px double var(--olive-green);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(139, 115, 85, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.thumb:hover {
+  transform: scale(1.1);
+  z-index: 10;
+  position: relative;
+}
+
+.actions {
+  margin-top: 30px;
+}
+
+.actions button {
+  background: var(--olive-green);
+  color: var(--cream);
+  padding: 12px 24px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.actions button:hover {
+  background: var(--brown);
+}
 </style>

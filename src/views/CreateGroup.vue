@@ -160,15 +160,24 @@ async function createGroup() {
   flex-direction: column;
   gap: 1rem;
 }
+
+.create-group h1 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: var(--brown);
+  margin-bottom: 20px;
+}
+
 .group-form {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  background: #fafafa;
+  background: var(--beige);
   padding: 1.25rem 1.5rem 2.5rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 4px double var(--olive-green);
+  border-radius: 12px;
   position: relative;
+  box-shadow: 0 4px 12px rgba(139, 115, 85, 0.2);
 }
 .form-row {
   display: flex;
@@ -180,9 +189,17 @@ async function createGroup() {
 }
 .form-row input[type="text"] {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #ccc;
+  border: 2px solid var(--olive-green);
   border-radius: 6px;
   font-size: 0.95rem;
+  background: var(--cream);
+  color: var(--brown);
+}
+
+.form-row input[type="text"]:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(155, 168, 130, 0.2);
 }
 .invite-input-wrapper {
   display: flex;
@@ -195,15 +212,16 @@ async function createGroup() {
   gap: 0.5rem;
 }
 .chip {
-  background: #e0f0ff;
-  border: 1px solid #b5d8f5;
-  color: #045381;
+  background: var(--lime-green);
+  border: 2px solid var(--olive-green);
+  color: var(--brown);
   padding: 0.25rem 0.5rem;
   border-radius: 16px;
   font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  font-weight: 500;
 }
 .chip button {
   background: none;
@@ -211,7 +229,8 @@ async function createGroup() {
   cursor: pointer;
   font-size: 0.9rem;
   line-height: 1;
-  color: #045381;
+  color: var(--brown);
+  font-weight: bold;
 }
 .hint {
   font-size: 0.7rem;
@@ -223,40 +242,43 @@ async function createGroup() {
   right: 1rem;
 }
 .create-btn {
-  background: #3b82f6;
-  color: #fff;
+  background: var(--olive-green);
+  color: var(--cream);
   border: none;
   padding: 0.6rem 1.1rem;
   font-size: 0.9rem;
   border-radius: 6px;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(139, 115, 85, 0.2);
+  font-weight: 600;
+  transition: background 0.2s;
 }
 .create-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .create-btn:not(:disabled):hover {
-  background: #1d64d9;
+  background: var(--brown);
 }
 .suggestions {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid #ccc;
+  border: 2px solid var(--olive-green);
   border-radius: 6px;
-  background: #fff;
+  background: var(--cream);
   max-height: 180px;
   overflow-y: auto;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(139, 115, 85, 0.2);
 }
 .suggestion {
   padding: 0.4rem 0.6rem;
   cursor: pointer;
   font-size: 0.85rem;
+  color: var(--brown);
 }
 .suggestion:hover,
 .suggestion.highlighted {
-  background: #eef6ff;
+  background: var(--lime-green);
 }
 </style>

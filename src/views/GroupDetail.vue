@@ -36,13 +36,15 @@ const handleInvite = async () => {
 </script>
 
 <template>
-  <div v-if="group">
+  <div v-if="group" class="group-detail">
     <h1>{{ group.groupName }}</h1> <!-- Click to edit title impl left as exercise -->
 
-    <h3>Members</h3>
-    <ul>
-      <li v-for="m in group.members" :key="m">{{ m }}</li>
-    </ul>
+    <div class="members-section">
+      <h3>Members</h3>
+      <ul class="members-list">
+        <li v-for="m in group.members" :key="m">{{ m }}</li>
+      </ul>
+    </div>
 
     <div class="invite-section">
         <h3>Add Member</h3>
@@ -51,3 +53,94 @@ const handleInvite = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.group-detail {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.group-detail h1 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: var(--brown);
+  margin-bottom: 30px;
+}
+
+.members-section {
+  background: var(--beige);
+  border: 4px double var(--olive-green);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(139, 115, 85, 0.15);
+}
+
+.members-section h3 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 1.8rem;
+  color: var(--brown);
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.members-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.members-list li {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--cream);
+  border: 2px solid var(--olive-green);
+  border-radius: 6px;
+  color: var(--brown);
+}
+
+.invite-section {
+  background: var(--lime-green);
+  border: 4px double var(--olive-green);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(139, 115, 85, 0.15);
+}
+
+.invite-section h3 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 1.8rem;
+  color: var(--brown);
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.invite-section input {
+  background: var(--cream);
+  border: 2px solid var(--olive-green);
+  color: var(--brown);
+  padding: 10px;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+}
+
+.invite-section input:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(155, 168, 130, 0.2);
+}
+
+.invite-section button {
+  background: var(--olive-green);
+  color: var(--cream);
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.invite-section button:hover {
+  background: var(--brown);
+}
+</style>

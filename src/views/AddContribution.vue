@@ -90,76 +90,126 @@ const submit = async () => {
     isUploading.value = false;
   }
 };
+
+function getRotation(index: number): number {
+  const rotations = [-1.5, 1, -1, 1.5, -0.5, 0.5];
+  return rotations[index % rotations.length];
+}
 </script>
 
 <template>
-  <div>
+  <div class="add-contribution">
     <h1>Add Contribution</h1>
-    <textarea v-model="description" placeholder="Write your memory..." :disabled="isUploading"></textarea>
-    
-    <div class="file-upload-section">
-      <label for="file-input" class="file-label">
-        <span>📷 Choose Images</span>
-        <input 
-          id="file-input"
-          type="file" 
-          accept="image/*"
-          multiple
-          @change="handleFileSelect"
-          :disabled="isUploading"
-        />
-      </label>
+    <div class="contribution-form">
+      <textarea v-model="description" placeholder="Write your memory..." :disabled="isUploading"></textarea>
       
-      <div v-if="selectedFiles.length > 0" class="selected-files">
-        <h3>Selected Images ({{ selectedFiles.length }}):</h3>
-        <div class="image-grid">
-          <div v-for="(file, index) in selectedFiles" :key="index" class="image-item">
-            <img :src="previewUrls[index]" :alt="file.name" />
-            <button @click="removeFile(index)" :disabled="isUploading" class="remove-btn">×</button>
-            <span class="file-name">{{ file.name }}</span>
+      <div class="file-upload-section">
+        <label for="file-input" class="file-label">
+          <span>📷 Choose Images</span>
+          <input 
+            id="file-input"
+            type="file" 
+            accept="image/*"
+            multiple
+            @change="handleFileSelect"
+            :disabled="isUploading"
+          />
+        </label>
+        
+        <div v-if="selectedFiles.length > 0" class="selected-files">
+          <h3>Selected Images ({{ selectedFiles.length }}):</h3>
+          <div class="image-grid">
+            <div 
+              v-for="(file, index) in selectedFiles" 
+              :key="index" 
+              class="image-item"
+              :style="{ transform: `rotate(${getRotation(index)}deg)` }"
+            >
+              <img :src="previewUrls[index]" :alt="file.name" />
+              <button @click="removeFile(index)" :disabled="isUploading" class="remove-btn">×</button>
+              <span class="file-name">{{ file.name }}</span>
+            </div>
           </div>
         </div>
       </div>
+      
+      <p v-if="uploadProgress" class="upload-progress">{{ uploadProgress }}</p>
+      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      
+      <div class="actions">
+        <button @click="submit" :disabled="isUploading || !description.trim()">
+          {{ isUploading ? 'Uploading...' : 'Create Contribution!' }}
+        </button>
+      </div>
     </div>
-    
-    <p v-if="uploadProgress" class="upload-progress">{{ uploadProgress }}</p>
-    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-    
-    <button @click="submit" :disabled="isUploading || !description.trim()">
-      {{ isUploading ? 'Uploading...' : 'Create Contribution!' }}
-    </button>
   </div>
 </template>
 
+
 <style scoped>
+.add-contribution {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.add-contribution h1 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: var(--brown);
+  margin-bottom: 20px;
+}
+
+.contribution-form {
+  background: var(--beige);
+  border: 4px double var(--olive-green);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(139, 115, 85, 0.2);
+}
+
 textarea {
   width: 100%;
-  min-height: 100px;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  min-height: 120px;
+  padding: 12px;
+  margin-bottom: 1.5rem;
+  border: 2px solid var(--olive-green);
+  border-radius: 8px;
   font-family: inherit;
+  background: var(--cream);
+  color: var(--brown);
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(155, 168, 130, 0.2);
+}
+
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .file-upload-section {
-  margin: 1rem 0;
+  margin: 1.5rem 0;
 }
 
 .file-label {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: white;
-  border-radius: 6px;
+  background: var(--olive-green);
+  color: var(--cream);
+  border-radius: 8px;
   cursor: pointer;
   margin-bottom: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: background 0.2s;
+  box-shadow: 0 2px 4px rgba(139, 115, 85, 0.2);
 }
 
 .file-label:hover {
-  background: #2563eb;
+  background: var(--brown);
 }
 
 .file-label input[type="file"] {
@@ -167,32 +217,42 @@ textarea {
 }
 
 .file-label:has(input:disabled) {
-  background: #9ca3af;
+  background: var(--brown);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .selected-files {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 .selected-files h3 {
   margin: 0 0 1rem 0;
-  font-size: 1rem;
-  color: #374151;
+  font-size: 1.2rem;
+  color: var(--brown);
+  font-family: 'Italianno', 'Caveat', cursive;
 }
 
 .image-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .image-item {
   position: relative;
-  background: #f3f4f6;
-  border-radius: 8px;
+  background: var(--cream);
+  border: 3px double var(--olive-green);
+  border-radius: 12px;
   overflow: hidden;
   padding-bottom: 0.5rem;
+  box-shadow: 0 4px 8px rgba(139, 115, 85, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.image-item:hover {
+  transform: rotate(0deg) scale(1.05) !important;
+  z-index: 10;
 }
 
 .image-item img {
@@ -206,7 +266,7 @@ textarea {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(239, 68, 68, 0.9);
+  background: rgba(220, 38, 38, 0.9);
   color: white;
   border: none;
   border-radius: 50%;
@@ -220,14 +280,15 @@ textarea {
   justify-content: center;
   padding: 0;
   transition: background 0.2s;
+  font-weight: bold;
 }
 
 .remove-btn:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.9);
+  background: rgba(185, 28, 28, 0.9);
 }
 
 .remove-btn:disabled {
-  background: rgba(156, 163, 175, 0.9);
+  background: rgba(139, 115, 85, 0.6);
   cursor: not-allowed;
 }
 
@@ -235,7 +296,7 @@ textarea {
   display: block;
   padding: 0.5rem;
   font-size: 0.85rem;
-  color: #4b5563;
+  color: var(--brown);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -243,39 +304,48 @@ textarea {
 }
 
 .upload-progress {
-  color: #3b82f6;
+  color: var(--olive-green);
   font-style: italic;
   margin: 0.5rem 0;
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .error-message {
-  color: #ef4444;
+  color: #dc2626;
   background: #fee;
   padding: 0.75rem;
-  border-radius: 4px;
+  border-radius: 6px;
   margin: 0.5rem 0;
   font-size: 0.9rem;
+  border: 1px solid #fcc;
+}
+
+.actions {
+  margin-top: 1.5rem;
+  text-align: right;
 }
 
 button {
   padding: 0.75rem 1.5rem;
-  background: #10b981;
-  color: white;
+  background: var(--olive-green);
+  color: var(--cream);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: background 0.2s;
+  box-shadow: 0 2px 4px rgba(139, 115, 85, 0.2);
 }
 
 button:hover:not(:disabled) {
-  background: #059669;
+  background: var(--brown);
 }
 
 button:disabled {
-  background: #9ca3af;
+  background: var(--brown);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 </style>

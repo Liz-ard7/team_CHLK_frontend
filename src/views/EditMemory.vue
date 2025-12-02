@@ -117,87 +117,126 @@ async function deleteMemory() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
 }
+
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
 }
+
 .header h1 {
   margin: 0;
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: var(--brown);
 }
+
 .delete-btn {
   background: #dc2626;
   color: #fff;
   border: none;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  font-weight: 600;
+  transition: background 0.2s;
 }
+
 .delete-btn:hover {
   background: #b91c1c;
 }
+
 .memory-form {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  background: #fafafa;
+  background: var(--beige);
   padding: 1.25rem 1.5rem 4rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 4px double var(--olive-green);
+  border-radius: 12px;
   position: relative;
+  box-shadow: 0 4px 12px rgba(139, 115, 85, 0.2);
 }
+
 .form-row {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
+
 .form-row label {
   font-weight: 600;
+  color: var(--brown);
+  font-size: 0.95rem;
 }
+
 .form-row input[type="text"],
 .form-row select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--olive-green);
+  border-radius: 8px;
   font-size: 0.95rem;
-  background: #fff;
+  background: var(--cream);
+  color: var(--brown);
 }
+
+.form-row input[type="text"]:focus,
+.form-row select:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(155, 168, 130, 0.2);
+}
+
 .form-row select {
   cursor: pointer;
 }
+
 .form-row select:disabled {
-  background: #f5f5f5;
+  background: var(--beige);
+  opacity: 0.7;
   cursor: not-allowed;
 }
+
 .hint {
-  font-size: 0.7rem;
-  color: #666;
+  font-size: 0.75rem;
+  color: var(--brown);
+  opacity: 0.7;
 }
+
 .actions {
   position: absolute;
   bottom: 1rem;
   right: 1rem;
 }
+
 .edit-btn {
-  background: #3b82f6;
-  color: #fff;
+  background: var(--olive-green);
+  color: var(--cream);
   border: none;
   padding: 0.6rem 1.1rem;
   font-size: 0.9rem;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(139, 115, 85, 0.2);
+  font-weight: 600;
+  transition: background 0.2s;
 }
+
 .edit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .edit-btn:not(:disabled):hover {
-  background: #1d64d9;
+  background: var(--brown);
 }
+
 .error {
   color: #dc2626;
   font-size: 0.75rem;

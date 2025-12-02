@@ -133,97 +133,155 @@ const submit = async () => {
     isUploading.value = false;
   }
 };
+
+function getRotation(index: number): number {
+  const rotations = [-1.5, 1, -1, 1.5, -0.5, 0.5, -1.2, 0.8];
+  return rotations[index % rotations.length] ?? 0;
+}
 </script>
 
 <template>
-  <div>
+  <div class="edit-contribution">
     <h1>Edit Contribution</h1>
-    <textarea v-model="description" placeholder="Update your memory..."></textarea>
-    
-    <!-- Existing Images -->
-    <div v-if="existingImages.length > 0" class="existing-images">
-      <h3>Current Images</h3>
-      <div class="image-grid">
-        <div v-for="objectPath in existingImages" :key="objectPath" class="image-preview">
-          <img :src="existingImageUrls[objectPath] || 'https://via.placeholder.com/100?text=Loading'" alt="Existing image" />
-          <button @click="removeExistingImage(objectPath)" class="remove-btn">✕</button>
+    <div class="contribution-form">
+      <textarea v-model="description" placeholder="Update your memory..."></textarea>
+      
+      <!-- Existing Images -->
+      <div v-if="existingImages.length > 0" class="existing-images">
+        <h3>Current Images</h3>
+        <div class="image-grid">
+          <div 
+            v-for="(objectPath, idx) in existingImages" 
+            :key="objectPath" 
+            class="image-preview"
+            :style="{ transform: `rotate(${getRotation(idx)}deg)` }"
+          >
+            <img :src="existingImageUrls[objectPath] || 'https://via.placeholder.com/100?text=Loading'" alt="Existing image" />
+            <button @click="removeExistingImage(objectPath)" class="remove-btn">✕</button>
+          </div>
         </div>
       </div>
-    </div>
-    
-    <!-- New Images -->
-    <div v-if="newFiles.length > 0" class="new-images">
-      <h3>New Images to Add</h3>
-      <div class="image-grid">
-        <div v-for="(preview, idx) in newFilePreviews" :key="idx" class="image-preview">
-          <img :src="preview" alt="New image preview" />
-          <button @click="removeNewFile(idx)" class="remove-btn">✕</button>
+      
+      <!-- New Images -->
+      <div v-if="newFiles.length > 0" class="new-images">
+        <h3>New Images to Add</h3>
+        <div class="image-grid">
+          <div 
+            v-for="(preview, idx) in newFilePreviews" 
+            :key="idx" 
+            class="image-preview"
+            :style="{ transform: `rotate(${getRotation(existingImages.length + idx)}deg)` }"
+          >
+            <img :src="preview" alt="New image preview" />
+            <button @click="removeNewFile(idx)" class="remove-btn">✕</button>
+          </div>
         </div>
       </div>
+      
+      <!-- Add Images Button -->
+      <div class="file-input-container">
+        <label for="file-input" class="file-input-label">
+          📎 Add More Images
+        </label>
+        <input 
+          id="file-input"
+          type="file" 
+          @change="handleFileSelect" 
+          accept="image/*" 
+          multiple 
+          style="display: none;"
+        />
+      </div>
+      
+      <div v-if="uploadProgress" class="progress">{{ uploadProgress }}</div>
+      <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
+      
+      <div class="actions">
+        <button @click="submit" :disabled="isUploading">
+          {{ isUploading ? 'Updating...' : 'Update Contribution' }}
+        </button>
+        <button @click="router.push(`/memory/${route.params.id}`)" :disabled="isUploading">
+          Cancel
+        </button>
+      </div>
     </div>
-    
-    <!-- Add Images Button -->
-    <div class="file-input-container">
-      <label for="file-input" class="file-input-label">
-        📎 Add More Images
-      </label>
-      <input 
-        id="file-input"
-        type="file" 
-        @change="handleFileSelect" 
-        accept="image/*" 
-        multiple 
-        style="display: none;"
-      />
-    </div>
-    
-    <div v-if="uploadProgress" class="progress">{{ uploadProgress }}</div>
-    <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
-    
-    <button @click="submit" :disabled="isUploading">
-      {{ isUploading ? 'Updating...' : 'Update Contribution' }}
-    </button>
-    <button @click="router.push(`/memory/${route.params.id}`)" :disabled="isUploading">
-      Cancel
-    </button>
   </div>
 </template>
 
+
 <style scoped>
-textarea {
-  width: 100%;
-  min-height: 100px;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-family: inherit;
+.edit-contribution {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.existing-images, .new-images {
+.edit-contribution h1 {
+  font-family: 'Italianno', 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: var(--brown);
   margin-bottom: 20px;
 }
 
+.contribution-form {
+  background: var(--beige);
+  border: 4px double var(--olive-green);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(139, 115, 85, 0.2);
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  margin-bottom: 20px;
+  border: 2px solid var(--olive-green);
+  border-radius: 8px;
+  font-family: inherit;
+  background: var(--cream);
+  color: var(--brown);
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(155, 168, 130, 0.2);
+}
+
+.existing-images, .new-images {
+  margin-bottom: 25px;
+}
+
 .existing-images h3, .new-images h3 {
-  margin-bottom: 10px;
-  font-size: 16px;
-  color: #666;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+  color: var(--brown);
+  font-family: 'Italianno', 'Caveat', cursive;
 }
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
-  margin-bottom: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
 }
 
 .image-preview {
   position: relative;
   width: 100%;
   padding-bottom: 100%;
-  background: #f5f5f5;
-  border-radius: 8px;
+  background: var(--cream);
+  border: 3px double var(--olive-green);
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 8px rgba(139, 115, 85, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.image-preview:hover {
+  transform: rotate(0deg) scale(1.05) !important;
+  z-index: 10;
 }
 
 .image-preview img {
@@ -237,84 +295,97 @@ textarea {
 
 .remove-btn {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 24px;
-  height: 24px;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: rgba(255, 0, 0, 0.8);
+  background: rgba(220, 38, 38, 0.9);
   color: white;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   padding: 0;
+  font-weight: bold;
+  transition: background 0.2s;
 }
 
 .remove-btn:hover {
-  background: rgba(255, 0, 0, 1);
+  background: rgba(185, 28, 28, 0.9);
 }
 
 .file-input-container {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .file-input-label {
   display: inline-block;
   padding: 10px 20px;
-  background: #007bff;
-  color: white;
-  border-radius: 4px;
+  background: var(--olive-green);
+  color: var(--cream);
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(139, 115, 85, 0.2);
 }
 
 .file-input-label:hover {
-  background: #0056b3;
+  background: var(--brown);
 }
 
 .progress {
-  color: #007bff;
-  margin: 10px 0;
+  color: var(--olive-green);
+  margin: 15px 0;
   font-weight: 500;
+  font-style: italic;
 }
 
 .error {
-  color: #dc3545;
-  margin: 10px 0;
-  padding: 10px;
-  background: #f8d7da;
-  border-radius: 4px;
+  color: #dc2626;
+  margin: 15px 0;
+  padding: 12px;
+  background: #fee;
+  border-radius: 6px;
+  border: 1px solid #fcc;
+}
+
+.actions {
+  margin-top: 25px;
+  display: flex;
+  gap: 10px;
 }
 
 button {
-  padding: 10px 20px;
-  margin-right: 10px;
+  padding: 12px 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 1rem;
+  font-weight: 600;
   transition: background 0.2s;
+  box-shadow: 0 2px 4px rgba(139, 115, 85, 0.2);
 }
 
 button:first-of-type {
-  background: #28a745;
-  color: white;
+  background: var(--olive-green);
+  color: var(--cream);
 }
 
 button:first-of-type:hover:not(:disabled) {
-  background: #218838;
+  background: var(--brown);
 }
 
 button:last-of-type {
-  background: #6c757d;
-  color: white;
+  background: var(--brown);
+  color: var(--cream);
 }
 
 button:last-of-type:hover:not(:disabled) {
-  background: #5a6268;
+  background: #6b5a42;
 }
 
 button:disabled {
