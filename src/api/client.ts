@@ -1,19 +1,5 @@
 import axios from 'axios';
 
-// Lightweight in-memory log of last three API events
-declare global {
-  interface Window { __apiLog?: Array<{ type: 'request' | 'response' | 'error'; method?: string; url: string; status?: number | null; message?: string; time: number }>; }
-}
-
-const pushApiLog = (entry: { type: 'request' | 'response' | 'error'; method?: string; url: string; status?: number | null; message?: string; time: number }) => {
-  if (typeof window === 'undefined') return;
-  window.__apiLog = window.__apiLog || [];
-  window.__apiLog.push(entry);
-  // Keep only last three
-  if (window.__apiLog.length > 3) window.__apiLog.splice(0, window.__apiLog.length - 3);
-  window.dispatchEvent(new CustomEvent('api-log-updated'));
-};
-
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
   headers: {
@@ -24,27 +10,6 @@ const apiClient = axios.create({
 
 // Log the API URL on startup
 console.log('API Client configured with baseURL:', apiClient.defaults.baseURL);
-
-// Attach interceptors to capture last three calls
-apiClient.interceptors.request.use(cfg => {
-  const fullUrl = (cfg.baseURL || '') + (cfg.url || '');
-  pushApiLog({ type: 'request', method: (cfg.method || 'post').toUpperCase(), url: fullUrl, time: Date.now() });
-  return cfg;
-});
-
-apiClient.interceptors.response.use(
-  res => {
-    const fullUrl = (res.config.baseURL || '') + (res.config.url || '');
-    pushApiLog({ type: 'response', url: fullUrl, status: res.status, time: Date.now() });
-    return res;
-  },
-  err => {
-    const cfg = err.config || {};
-    const fullUrl = (cfg.baseURL || '') + (cfg.url || '');
-    pushApiLog({ type: 'error', url: fullUrl || 'unknown', status: err.response?.status ?? null, message: err.message, time: Date.now() });
-    return Promise.reject(err);
-  }
-);
 
 // MOCK MODE: Set to true to use mock data instead of real API calls
 const MOCK_MODE = false;

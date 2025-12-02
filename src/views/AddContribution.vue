@@ -93,7 +93,9 @@ const submit = async () => {
 
 function getRotation(index: number): number {
   const rotations = [-1.5, 1, -1, 1.5, -0.5, 0.5];
-  return rotations[index % rotations.length];
+  const len = rotations.length;
+  const i = ((index % len) + len) % len; // ensure non-negative index
+  return rotations[i] ?? 0; // fallback for strict indexed access
 }
 </script>
 

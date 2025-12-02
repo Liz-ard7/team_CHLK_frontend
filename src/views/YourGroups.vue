@@ -46,7 +46,9 @@ const leaveGroup = async (id: string, name: string) => {
 
 function getRotation(index: number): number {
   const rotations = [-1, 1.5, -1.5, 1, -0.5, 0.5];
-  return rotations[index % rotations.length];
+  const len = rotations.length;
+  const i = ((index % len) + len) % len;
+  return rotations[i] ?? 0;
 }
 </script>
 

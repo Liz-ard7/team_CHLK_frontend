@@ -73,23 +73,14 @@ export const MemoryService = {
 // --- Image Storage ---
 export const ImageService = {
   // Step 1: Request a presigned URL for uploading
-  requestUploadUrl: async (user: ID, imageName: string, memory?: ID, contentType?: string, expiresInSeconds?: number) => {
-    const result = await post<{uploadUrl: string, bucket: string, object: string}>('/ImageStorage/requestUploadUrl', { 
+  requestUploadUrl: (user: ID, imageName: string, memory?: ID, contentType?: string, expiresInSeconds?: number) => 
+    post<{uploadUrl: string, bucket: string, object: string}>('/ImageStorage/requestUploadUrl', { 
       user,
       imageName,
       ...(memory !== undefined && { memory }),
       contentType,
       expiresInSeconds 
-    });
-    try {
-      if (typeof window !== 'undefined') {
-        const payload = { ...result, timestamp: Date.now(), user, imageName, memory };
-        (window as any).__latestUploadUrl = payload;
-        window.dispatchEvent(new CustomEvent('upload-url-response', { detail: payload }));
-      }
-    } catch {}
-    return result;
-  },
+    }),
   
   // Step 2: Upload the file directly to GCS using the presigned URL
   // This is done with a raw PUT request, not through the API client
