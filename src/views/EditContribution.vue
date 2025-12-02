@@ -20,7 +20,12 @@ const errorMessage = ref('');
 
 // Pre-fill the description and images from the existing contribution
 onMounted(async () => {
-  const res = await MemoryService.get(route.params.id as string);
+  const memoryIdParam = route.params.id;
+  if (typeof memoryIdParam !== 'string') {
+    errorMessage.value = 'Invalid memory id.';
+    return;
+  }
+  const res = await MemoryService.get(memoryIdParam);
   if (res[0]?.memory) {
     const contribution = res[0].memory.contributions[contributionIndex.value];
     if (contribution) {
@@ -70,7 +75,8 @@ const removeExistingImage = (objectPath: string) => {
 };
 
 const removeNewFile = (index: number) => {
-  URL.revokeObjectURL(newFilePreviews.value[index]);
+  const preview = newFilePreviews.value[index];
+  if (preview !== undefined) URL.revokeObjectURL(preview);
   newFiles.value.splice(index, 1);
   newFilePreviews.value.splice(index, 1);
 };
@@ -83,19 +89,24 @@ const submit = async () => {
   uploadProgress.value = 'Uploading new images...';
   
   try {
+    // Resolve memory id locally (was only scoped inside onMounted earlier)
+    const memoryIdParam = route.params.id;
+    if (typeof memoryIdParam !== 'string') {
+      errorMessage.value = 'Invalid memory id.';
+      isUploading.value = false;
+      return;
+    }
     // Upload new images
     const newImagePaths: string[] = [];
-    for (let i = 0; i < newFiles.value.length; i++) {
-      const file = newFiles.value[i];
+    for (const [i, file] of newFiles.value.entries()) {
       uploadProgress.value = `Uploading new image ${i + 1} of ${newFiles.value.length}...`;
-      
       try {
-        const result = await ImageService.uploadImage(auth.userId, file);
+        const result = await ImageService.uploadImage(auth.userId as string, file, memoryIdParam);
         newImagePaths.push(result.object);
       } catch (err: any) {
         console.error('Failed to upload image:', err);
         const errorMsg = err?.message || err?.toString() || 'Unknown error';
-        errorMessage.value = `Failed to upload ${file.name}: ${errorMsg}`;
+        errorMessage.value = `Failed to upload ${file?.name ?? 'file'}: ${errorMsg}`;
         isUploading.value = false;
         return;
       }
@@ -109,14 +120,14 @@ const submit = async () => {
     
     // Update contribution with new description and images
     await MemoryService.editContribution(
-      route.params.id as string,
+      memoryIdParam,
       contributionIndex.value,
-      auth.userId,
+      auth.userId as string,
       description.value,
       imageUrlsString
     );
     
-    router.push(`/memory/${route.params.id}`);
+    router.push(`/memory/${memoryIdParam}`);
   } catch (error: any) {
     errorMessage.value = error.message || 'Failed to update contribution';
     isUploading.value = false;

@@ -31,15 +31,22 @@ const handleFileSelect = (event: Event) => {
 };
 
 const removeFile = (index: number) => {
-  // Revoke the object URL to free memory
-  URL.revokeObjectURL(previewUrls.value[index]);
-  
+  // Safely revoke object URL (guard against undefined under strict indexing)
+  const url = previewUrls.value[index];
+  if (url !== undefined) {
+    URL.revokeObjectURL(url);
+  }
   selectedFiles.value.splice(index, 1);
   previewUrls.value.splice(index, 1);
 };
 
 const submit = async () => {
   if (!auth.userId) return;
+  const memoryIdParam = route.params.id;
+  if (typeof memoryIdParam !== 'string') {
+    errorMessage.value = 'Invalid memory id.';
+    return;
+  }
   
   isUploading.value = true;
   errorMessage.value = '';
@@ -48,21 +55,17 @@ const submit = async () => {
   try {
     // Upload all selected images first
     const urls: string[] = [];
-    for (let i = 0; i < selectedFiles.value.length; i++) {
-      const file = selectedFiles.value[i];
+    for (const [i, file] of selectedFiles.value.entries()) {
       uploadProgress.value = `Uploading image ${i + 1} of ${selectedFiles.value.length}...`;
-      
       try {
-        const result = await ImageService.uploadImage(auth.userId, file);
-        // Store the object path, not the URL - we'll get signed URLs when viewing
+        const result = await ImageService.uploadImage(auth.userId as string, file, memoryIdParam);
         urls.push(result.object);
       } catch (err: any) {
         console.error('Failed to upload image:', err);
-        // Show the actual error message
         const errorMsg = err?.message || err?.toString() || 'Unknown error';
-        errorMessage.value = `Failed to upload ${file.name}: ${errorMsg}`;
+        errorMessage.value = `Failed to upload ${file?.name ?? 'file'}: ${errorMsg}`;
         isUploading.value = false;
-        return; // Stop the upload process
+        return;
       }
     }
     

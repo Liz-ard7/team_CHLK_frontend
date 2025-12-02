@@ -73,10 +73,11 @@ export const MemoryService = {
 // --- Image Storage ---
 export const ImageService = {
   // Step 1: Request a presigned URL for uploading
-  requestUploadUrl: (user: ID, imageName: string, contentType?: string, expiresInSeconds?: number) => 
+  requestUploadUrl: (user: ID, imageName: string, memory?: ID, contentType?: string, expiresInSeconds?: number) => 
     post<{uploadUrl: string, bucket: string, object: string}>('/ImageStorage/requestUploadUrl', { 
-      user, 
-      imageName, 
+      user,
+      imageName,
+      ...(memory !== undefined && { memory }),
       contentType,
       expiresInSeconds 
     }),
@@ -96,12 +97,13 @@ export const ImageService = {
   },
   
   // Step 3: Confirm the upload was successful and get the permanent URL
-  confirmUpload: (user: ID, object: string, contentType?: string, size?: number) => 
+  confirmUpload: (user: ID, object: string, contentType?: string, size?: number, memory?: ID) => 
     post<{image: ID, url: string}>('/ImageStorage/confirmUpload', { 
       user, 
       object,
       contentType,
-      size 
+      size,
+      ...(memory !== undefined && { memory })
     }),
   
   // Get a signed view URL for an image
@@ -109,14 +111,15 @@ export const ImageService = {
     post<{url: string}>('/ImageStorage/getViewUrl', { user, object, expiresInSeconds }),
   
   // Helper method to do the full upload flow
-  uploadImage: async (user: ID, file: File): Promise<{image: ID, url: string, object: string}> => {
+  uploadImage: async (user: ID, file: File, memory?: ID): Promise<{image: ID, url: string, object: string}> => {
     console.log('Starting image upload:', { user, fileName: file.name, fileType: file.type, fileSize: file.size });
     
     // 1. Request upload URL - don't pass contentType to avoid CORS preflight issues
     console.log('Step 1: Requesting upload URL...');
     const { uploadUrl, object } = await ImageService.requestUploadUrl(
-      user, 
-      file.name
+      user,
+      file.name,
+      memory
       // Don't pass contentType - it causes CORS issues with GCS
     );
     console.log('Got upload URL:', { uploadUrl: uploadUrl.substring(0, 50) + '...', object });
@@ -128,7 +131,7 @@ export const ImageService = {
     
     // 3. Confirm upload and get permanent URL
     console.log('Step 3: Confirming upload...');
-    const result = await ImageService.confirmUpload(user, object, file.type, file.size);
+    const result = await ImageService.confirmUpload(user, object, file.type, file.size, memory);
     console.log('Upload confirmed:', result);
     
     // Return both the result and the object path
