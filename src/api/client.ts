@@ -5,7 +5,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false, // Enable CORS credentials
+  withCredentials: true, // Enable CORS credentials
 });
 
 // Log the API URL on startup
