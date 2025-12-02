@@ -11,7 +11,6 @@ const auth = useAuthStore();
 const description = ref('');
 const selectedFiles = ref<File[]>([]);
 const previewUrls = ref<string[]>([]);
-const uploadedUrls = ref<string[]>([]);
 const isUploading = ref(false);
 const uploadProgress = ref('');
 const errorMessage = ref('');
