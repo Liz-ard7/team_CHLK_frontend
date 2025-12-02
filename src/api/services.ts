@@ -63,11 +63,68 @@ export const MemoryService = {
   deleteMemory: (memory: ID, creator: ID) => post('/MemoryEntries/deleteMemory', { memory, creator }),
 };
 
-// --- Image Storage (Stub for URL generation) ---
+// --- Image Storage ---
 export const ImageService = {
-  // In a real implementation, you would:
-  // 1. Call requestUploadUrl
-  // 2. PUT binary file to that URL
-  // 3. Call confirmUpload
-  confirmUpload: (user: ID, object: string) => post<{image: ID, url: string}>('/ImageStorage/confirmUpload', { user, object }),
+  // Step 1: Request a presigned URL for uploading
+  requestUploadUrl: (user: ID, imageName: string, contentType?: string, expiresInSeconds?: number) => 
+    post<{uploadUrl: string, bucket: string, object: string}>('/ImageStorage/requestUploadUrl', { 
+      user, 
+      imageName, 
+      contentType,
+      expiresInSeconds 
+    }),
+  
+  // Step 2: Upload the file directly to GCS using the presigned URL
+  // This is done with a raw PUT request, not through the API client
+  uploadToPresignedUrl: async (uploadUrl: string, file: File): Promise<void> => {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      // Don't set Content-Type header - it will trigger CORS preflight
+      // The signed URL already includes the content type
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to upload file to GCS: ${response.status} ${response.statusText}`);
+    }
+  },
+  
+  // Step 3: Confirm the upload was successful and get the permanent URL
+  confirmUpload: (user: ID, object: string, contentType?: string, size?: number) => 
+    post<{image: ID, url: string}>('/ImageStorage/confirmUpload', { 
+      user, 
+      object,
+      contentType,
+      size 
+    }),
+  
+  // Get a signed view URL for an image
+  getViewUrl: (user: ID, object: string, expiresInSeconds?: number) =>
+    post<{url: string}>('/ImageStorage/getViewUrl', { user, object, expiresInSeconds }),
+  
+  // Helper method to do the full upload flow
+  uploadImage: async (user: ID, file: File): Promise<{image: ID, url: string, object: string}> => {
+    console.log('Starting image upload:', { user, fileName: file.name, fileType: file.type, fileSize: file.size });
+    
+    // 1. Request upload URL - don't pass contentType to avoid CORS preflight issues
+    console.log('Step 1: Requesting upload URL...');
+    const { uploadUrl, object } = await ImageService.requestUploadUrl(
+      user, 
+      file.name
+      // Don't pass contentType - it causes CORS issues with GCS
+    );
+    console.log('Got upload URL:', { uploadUrl: uploadUrl.substring(0, 50) + '...', object });
+    
+    // 2. Upload file to presigned URL
+    console.log('Step 2: Uploading to GCS...');
+    await ImageService.uploadToPresignedUrl(uploadUrl, file);
+    console.log('Upload to GCS successful');
+    
+    // 3. Confirm upload and get permanent URL
+    console.log('Step 3: Confirming upload...');
+    const result = await ImageService.confirmUpload(user, object, file.type, file.size);
+    console.log('Upload confirmed:', result);
+    
+    // Return both the result and the object path
+    return { ...result, object };
+  },
 };

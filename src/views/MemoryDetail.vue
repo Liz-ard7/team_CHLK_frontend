@@ -1,19 +1,54 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { MemoryService, type Memory } from '../api/services';
+import { MemoryService, ImageService, type Memory } from '../api/services';
 import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
 const auth = useAuthStore();
 const memory = ref<Memory | null>(null);
+const imageUrls = ref<Record<string, string>>({}); // Map object path to signed URL
 
 onMounted(async () => {
   const res = await MemoryService.get(route.params.id as string);
-  if (res[0]) memory.value = res[0].memory;
+  if (res[0]) {
+    memory.value = res[0].memory;
+    // Fetch signed URLs for all images
+    await loadImageUrls();
+  }
 });
 
+const loadImageUrls = async () => {
+  if (!memory.value || !auth.userId) return;
+  
+  for (const contribution of memory.value.contributions) {
+    const urls = getImageUrls(contribution.imageUrls);
+    for (const objectPath of urls) {
+      try {
+        // Get signed view URL for each image
+        const result = await ImageService.getViewUrl(auth.userId, objectPath);
+        imageUrls.value[objectPath] = result.url;
+      } catch (err) {
+        console.error('Failed to get signed URL for:', objectPath, err);
+        // Use placeholder on error
+        imageUrls.value[objectPath] = 'https://via.placeholder.com/100?text=Error';
+      }
+    }
+  }
+};
+
+const getSignedUrl = (objectPath: string): string => {
+  return imageUrls.value[objectPath] || 'https://via.placeholder.com/100?text=Loading';
+};
+
 const isMyContribution = (uid: string) => uid === auth.userId;
+
+// Parse imageUrls - backend stores as comma-separated string, but we need array
+const getImageUrls = (imageUrls: string | string[]): string[] => {
+  if (Array.isArray(imageUrls)) return imageUrls;
+  if (!imageUrls || imageUrls.trim() === '') return [];
+  return imageUrls.split(',').map(url => url.trim()).filter(url => url.length > 0);
+};
 </script>
 
 <template>
@@ -32,7 +67,7 @@ const isMyContribution = (uid: string) => uid === auth.userId;
         </div>
         <p>{{ c.description }}</p>
         <div class="images">
-          <img v-for="img in c.imageUrls" :src="img" :key="img" class="thumb"/>
+          <img v-for="img in getImageUrls(c.imageUrls)" :src="getSignedUrl(img)" :key="img" class="thumb"/>
         </div>
         <div v-if="isMyContribution(c.user)">
           <router-link :to="`/memory/${memory.memoryID}/contribute/edit/${idx}`"><button>Edit Contribution</button></router-link>
