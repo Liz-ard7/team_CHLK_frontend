@@ -73,14 +73,23 @@ export const MemoryService = {
 // --- Image Storage ---
 export const ImageService = {
   // Step 1: Request a presigned URL for uploading
-  requestUploadUrl: (user: ID, imageName: string, memory?: ID, contentType?: string, expiresInSeconds?: number) => 
-    post<{uploadUrl: string, bucket: string, object: string}>('/ImageStorage/requestUploadUrl', { 
+  requestUploadUrl: async (user: ID, imageName: string, memory?: ID, contentType?: string, expiresInSeconds?: number) => {
+    const result = await post<{uploadUrl: string, bucket: string, object: string}>('/ImageStorage/requestUploadUrl', { 
       user,
       imageName,
       ...(memory !== undefined && { memory }),
       contentType,
       expiresInSeconds 
-    }),
+    });
+    try {
+      if (typeof window !== 'undefined') {
+        const payload = { ...result, timestamp: Date.now(), user, imageName, memory };
+        (window as any).__latestUploadUrl = payload;
+        window.dispatchEvent(new CustomEvent('upload-url-response', { detail: payload }));
+      }
+    } catch {}
+    return result;
+  },
   
   // Step 2: Upload the file directly to GCS using the presigned URL
   // This is done with a raw PUT request, not through the API client
@@ -116,44 +125,12 @@ export const ImageService = {
     
     // 1. Request upload URL - don't pass contentType to avoid CORS preflight issues
     console.log('Step 1: Requesting upload URL...');
-    let uploadUrl: string, object: string;
-    try {
-      const res = await ImageService.requestUploadUrl(
-        user,
-        file.name,
-        memory
-      );
-      uploadUrl = res.uploadUrl;
-      object = res.object;
-      try {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('api-debug', {
-            detail: {
-              type: 'response',
-              status: 200,
-              url: '/ImageStorage/requestUploadUrl',
-              time: Date.now(),
-              message: `requestUploadUrl ok: bucket=${res.bucket}, object=${res.object}`
-            }
-          }));
-        }
-      } catch {}
-    } catch (e: any) {
-      try {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('api-debug', {
-            detail: {
-              type: 'error',
-              status: null,
-              url: '/ImageStorage/requestUploadUrl',
-              time: Date.now(),
-              message: `requestUploadUrl failed: ${e?.message || e?.toString?.() || 'unknown'}`
-            }
-          }));
-        }
-      } catch {}
-      throw e;
-    }
+    const { uploadUrl, object } = await ImageService.requestUploadUrl(
+      user,
+      file.name,
+      memory
+      // Don't pass contentType - it causes CORS issues with GCS
+    );
     console.log('Got upload URL:', { uploadUrl: uploadUrl.substring(0, 50) + '...', object });
     
     // 2. Upload file to presigned URL
