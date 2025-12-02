@@ -58,7 +58,14 @@ export const MemoryService = {
   listForGroup: (groupID: ID) => post<[{memories: ID[]}]>('/MemoryEntries/_listMemoriesForGroup', { groupID }),
   get: (memoryID: ID) => post<[{memory: Memory}]>('/MemoryEntries/_getMemory', { memoryID }),
   addContribution: (memory: ID, user: ID, desc: string, imgUrls: string) => post('/MemoryEntries/addContribution', { memory, user, description: desc, imageUrls: imgUrls }),
-  editContribution: (memory: ID, contributionIndex: number, user: ID, newDesc: string) => post('/MemoryEntries/editContribution', { memory, contributionIndex, user, newDescription: newDesc }),
+  editContribution: (memory: ID, contributionIndex: number, user: ID, newDesc: string, newImageUrls?: string) => 
+    post('/MemoryEntries/editContribution', { 
+      memory, 
+      contributionIndex, 
+      user, 
+      newDescription: newDesc,
+      ...(newImageUrls !== undefined && { newImageUrls })
+    }),
   editTitle: (memory: ID, user: ID, newTitle: string) => post('/MemoryEntries/editTitle', { memory, user, newTitle }),
   deleteMemory: (memory: ID, creator: ID) => post('/MemoryEntries/deleteMemory', { memory, creator }),
 };
