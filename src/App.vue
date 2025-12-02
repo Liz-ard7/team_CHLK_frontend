@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from './stores/auth';
 import { useRouter } from 'vue-router';
-import UploadDiagnosticBar from './components/UploadDiagnosticBar.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -25,7 +24,6 @@ const handleLogout = () => {
     <main>
       <router-view />
     </main>
-    <UploadDiagnosticBar />
   </div>
 </template>
 
