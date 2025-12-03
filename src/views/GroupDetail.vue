@@ -8,11 +8,36 @@ const route = useRoute();
 const auth = useAuthStore();
 const group = ref<GroupDetails | null>(null);
 const inviteUser = ref('');
+const memberUsernames = ref<Record<string, string>>({}); // Map user ID to username
 
 onMounted(async () => {
   const res = await GroupService.getDetails(route.params.id as string);
-  if (res[0]) group.value = res[0];
+  if (res[0]) {
+    group.value = res[0];
+    // Fetch usernames for all members
+    await loadMemberUsernames();
+  }
 });
+
+const loadMemberUsernames = async () => {
+  if (!group.value) return;
+  
+  for (const userId of group.value.members) {
+    try {
+      const result = await AuthService.getUsername(userId as any);
+      if (result.length > 0 && result[0].username) {
+        memberUsernames.value[userId] = result[0].username;
+      }
+    } catch (err) {
+      console.error('Failed to get username for:', userId, err);
+      memberUsernames.value[userId] = userId; // Fallback to ID
+    }
+  }
+};
+
+const getUsernameDisplay = (userId: string): string => {
+  return memberUsernames.value[userId] || userId;
+};
 
 const handleInvite = async () => {
     if(!auth.userId) return;
@@ -42,7 +67,7 @@ const handleInvite = async () => {
     <div class="members-section">
       <h3>Members</h3>
       <ul class="members-list">
-        <li v-for="m in group.members" :key="m">{{ m }}</li>
+        <li v-for="m in group.members" :key="m">{{ getUsernameDisplay(m) }}</li>
       </ul>
     </div>
 

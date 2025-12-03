@@ -1,22 +1,46 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { MemoryService, ImageService, type Memory } from '../api/services';
+import { MemoryService, ImageService, AuthService, type Memory } from '../api/services';
 import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
 const auth = useAuthStore();
 const memory = ref<Memory | null>(null);
 const imageUrls = ref<Record<string, string>>({}); // Map object path to signed URL
+const usernames = ref<Record<string, string>>({}); // Map user ID to username
 
 onMounted(async () => {
   const res = await MemoryService.get(route.params.id as string);
   if (res[0]) {
     memory.value = res[0].memory;
-    // Fetch signed URLs for all images
-    await loadImageUrls();
+    // Fetch signed URLs for all images and usernames
+    await Promise.all([loadImageUrls(), loadUsernames()]);
   }
 });
+
+const loadUsernames = async () => {
+  if (!memory.value) return;
+  
+  // Get unique user IDs from all contributions
+  const userIds = [...new Set(memory.value.contributions.map(c => c.user))];
+  
+  for (const userId of userIds) {
+    try {
+      const result = await AuthService.getUsername(userId as any);
+      if (result.length > 0 && result[0].username) {
+        usernames.value[userId] = result[0].username;
+      }
+    } catch (err) {
+      console.error('Failed to get username for:', userId, err);
+      usernames.value[userId] = userId; // Fallback to ID
+    }
+  }
+};
+
+const getUsernameDisplay = (userId: string): string => {
+  return usernames.value[userId] || userId;
+};
 
 const loadImageUrls = async () => {
   if (!memory.value || !auth.userId) return;
@@ -63,7 +87,7 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
       <div v-for="(c, idx) in memory.contributions" :key="idx" class="contribution">
         <div class="user-header">
            <!-- Link to profile -->
-           <router-link :to="`/profile/${c.user}`">👤 User: {{ c.user }}</router-link>
+           <router-link :to="`/profile/${c.user}`">👤 {{ getUsernameDisplay(c.user) }}</router-link>
         </div>
         <p>{{ c.description }}</p>
         <div class="images">
