@@ -12,8 +12,9 @@ const memberUsernames = ref<Record<string, string>>({}); // Map user ID to usern
 
 onMounted(async () => {
   const res = await GroupService.getDetails(route.params.id as string);
-  if (res[0]) {
-    group.value = res[0];
+  const first = res?.[0];
+  if (first) {
+    group.value = first;
     // Fetch usernames for all members
     await loadMemberUsernames();
   }
@@ -25,8 +26,10 @@ const loadMemberUsernames = async () => {
   for (const userId of group.value.members) {
     try {
       const result = await AuthService.getUsername(userId as any);
-      if (result.length > 0 && result[0].username) {
-        memberUsernames.value[userId] = result[0].username;
+      const first = (result && Array.isArray(result)) ? result[0] : undefined;
+      const uname = first && (first as any).username;
+      if (typeof uname === 'string' && uname.length > 0) {
+        memberUsernames.value[userId] = uname;
       }
     } catch (err) {
       console.error('Failed to get username for:', userId, err);

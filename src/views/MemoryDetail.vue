@@ -12,8 +12,9 @@ const usernames = ref<Record<string, string>>({}); // Map user ID to username
 
 onMounted(async () => {
   const res = await MemoryService.get(route.params.id as string);
-  if (res[0]) {
-    memory.value = res[0].memory;
+  const first = res?.[0];
+  if (first && first.memory) {
+    memory.value = first.memory;
     // Fetch signed URLs for all images and usernames
     await Promise.all([loadImageUrls(), loadUsernames()]);
   }
@@ -28,8 +29,10 @@ const loadUsernames = async () => {
   for (const userId of userIds) {
     try {
       const result = await AuthService.getUsername(userId as any);
-      if (result.length > 0 && result[0].username) {
-        usernames.value[userId] = result[0].username;
+      const first = (result && Array.isArray(result)) ? result[0] : undefined;
+      const uname = first && (first as any).username;
+      if (typeof uname === 'string' && uname.length > 0) {
+        usernames.value[userId] = uname;
       }
     } catch (err) {
       console.error('Failed to get username for:', userId, err);
