@@ -21,6 +21,7 @@ export interface Memory {
   group: ID;
   creator: ID;
   title: string;
+  date?: string; // YYYY-MM-DD
   contributions: Contribution[];
 }
 
@@ -54,7 +55,8 @@ export const GroupService = {
 
 // --- Memory Entries ---
 export const MemoryService = {
-  create: (creator: ID, group: ID, title: string) => post<{memory: ID}>('/MemoryEntries/createMemory', { creator, group, title }),
+  create: (creator: ID, group: ID, title: string, date?: string) => 
+    post<{memory: ID}>('/MemoryEntries/createMemory', { creator, group, title, ...(date ? { date } : {}) }),
   listForGroup: (groupID: ID) => post<[{memories: ID[]}]>('/MemoryEntries/_listMemoriesForGroup', { groupID }),
   get: (memoryID: ID) => post<[{memory: Memory}]>('/MemoryEntries/_getMemory', { memoryID }),
   addContribution: (memory: ID, user: ID, desc: string, imgUrls: string) => post('/MemoryEntries/addContribution', { memory, user, description: desc, imageUrls: imgUrls }),

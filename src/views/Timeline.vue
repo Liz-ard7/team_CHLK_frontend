@@ -72,16 +72,40 @@ function getRotation(index: number): number {
   return rotations[index % rotations.length] ?? 0;
 }
 
+// Format YYYY-MM-DD or ISO string to M/D/YYYY
+function formatDate(input: string): string {
+  const s = String(input);
+  const datePart = s.includes('T') ? s.slice(0, 10) : s;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!match) return s;
+  const [, y, m, d] = match;
+  return `${Number(m)}/${Number(d)}/${y}`;
+}
+
 // Generate timeline path (winding path connecting memories)
+const sortedMemories = computed<Memory[]>(() => {
+  // Sort by date (YYYY-MM-DD) descending; items without date go last
+  const arr = memories.value.slice();
+  arr.sort((a, b) => {
+    const da = a.date ?? '';
+    const db = b.date ?? '';
+    if (da && db) return db.localeCompare(da); // newer first
+    if (da) return -1;
+    if (db) return 1;
+    return 0;
+  });
+  return arr;
+});
+
 const timelinePath = computed(() => {
-  if (memories.value.length === 0) return '';
+  if (sortedMemories.value.length === 0) return '';
   
   const cardHeight = 120;
   const cardSpacing = 20;
   const startX = 40;
   let path = `M ${startX} 0`;
   
-  memories.value.forEach((_, index) => {
+  sortedMemories.value.forEach((_, index) => {
     const y = index * (cardHeight + cardSpacing) + cardHeight / 2;
     const offsetX = (index % 2 === 0 ? 1 : -1) * 15; // Winding effect
     path += ` Q ${startX + offsetX} ${y - 30} ${startX + offsetX * 2} ${y}`;
@@ -111,17 +135,18 @@ const timelinePath = computed(() => {
             />
           </svg>
           <div 
-            v-for="(mem, index) in memories" 
+            v-for="(mem, index) in sortedMemories" 
             :key="mem.memoryID" 
             class="memory-card"
             :style="{ 
               transform: `rotate(${getRotation(index)}deg)`,
-              zIndex: memories.length - index
+              zIndex: sortedMemories.length - index
             }"
           >
             <router-link :to="`/memory/${mem.memoryID}`">
               <div class="card-frame">
                 <h3>{{ mem.title }}</h3>
+                <p class="date" v-if="mem.date">{{ formatDate(mem.date) }}</p>
                 <p>{{ mem.contributions.length }} Contributions</p>
               </div>
             </router-link>

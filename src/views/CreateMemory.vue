@@ -21,9 +21,10 @@ onMounted(async () => {
 });
 
 const create = async () => {
-    if(!auth.userId) return;
-    await MemoryService.create(auth.userId, selectedGroup.value, title.value);
-    router.push('/timeline');
+  if (!auth.userId) return;
+  const day = date.value && date.value.trim() ? date.value.trim() : undefined; // YYYY-MM-DD
+  await MemoryService.create(auth.userId, selectedGroup.value, title.value, day);
+  router.push('/timeline');
 }
 </script>
 
