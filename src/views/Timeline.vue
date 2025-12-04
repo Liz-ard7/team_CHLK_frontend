@@ -87,12 +87,13 @@ onMounted(async () => {
     }
     memories.value = allMemories; // In a real app, sort by date/ID
 
-    // Restore filters from sessionStorage or default to 'all'
+    // Restore filters; ensure new groups/users are auto-selected by union
     try {
-      const sg = sessionStorage.getItem('timeline.selectedGroupIds');
-      const su = sessionStorage.getItem('timeline.selectedUserIds');
-      const ag = sessionStorage.getItem('timeline.appliedGroupIds');
-      const au = sessionStorage.getItem('timeline.appliedUserIds');
+      const sgRaw = storage.getItem('timeline.selectedGroupIds');
+      const suRaw = storage.getItem('timeline.selectedUserIds');
+      const agRaw = storage.getItem('timeline.appliedGroupIds');
+      const auRaw = storage.getItem('timeline.appliedUserIds');
+
       const allGroupIds = details.map(d => d.id);
       const allUserIds: string[] = [];
       for (const d of details) {
@@ -100,16 +101,78 @@ onMounted(async () => {
           if (!allUserIds.includes(u)) allUserIds.push(u);
         }
       }
-      selectedGroupIds.value = new Set(sg ? JSON.parse(sg) : allGroupIds);
-      selectedUserIds.value = new Set(su ? JSON.parse(su) : allUserIds);
-      appliedGroupIds.value = new Set(ag ? JSON.parse(ag) : allGroupIds);
-      appliedUserIds.value = new Set(au ? JSON.parse(au) : allUserIds);
+
+      const sgSet = new Set<string>(sgRaw ? JSON.parse(sgRaw) : []);
+      const suSet = new Set<string>(suRaw ? JSON.parse(suRaw) : []);
+      const agSet = new Set<string>(agRaw ? JSON.parse(agRaw) : []);
+      const auSet = new Set<string>(auRaw ? JSON.parse(auRaw) : []);
+
+      for (const id of allGroupIds) { sgSet.add(id); agSet.add(id); }
+      for (const id of allUserIds) { suSet.add(id); auSet.add(id); }
+
+      selectedGroupIds.value = sgSet;
+      selectedUserIds.value = suSet;
+      appliedGroupIds.value = agSet;
+      appliedUserIds.value = auSet;
+
+      storage.setItem('timeline.selectedGroupIds', JSON.stringify(Array.from(sgSet)));
+      storage.setItem('timeline.selectedUserIds', JSON.stringify(Array.from(suSet)));
+      storage.setItem('timeline.appliedGroupIds', JSON.stringify(Array.from(agSet)));
+      storage.setItem('timeline.appliedUserIds', JSON.stringify(Array.from(auSet)));
     } catch {}
   } catch (e) {
     console.error(e);
   } finally {
     loading.value = false;
   }
+});
+
+// Ensure selections include newly added groups/users and set all on login
+import { watch } from 'vue';
+
+watch(groupsDetails, (details) => {
+  if (!details || details.length === 0) return;
+  const allGroupIds = details.map(d => d.id);
+  const allUserIds: string[] = [];
+  for (const d of details) {
+    for (const u of d.members) {
+      if (!allUserIds.includes(u)) allUserIds.push(u);
+    }
+  }
+  // Union in any new IDs without removing prior choices
+  for (const id of allGroupIds) {
+    selectedGroupIds.value.add(id);
+    appliedGroupIds.value.add(id);
+  }
+  for (const id of allUserIds) {
+    selectedUserIds.value.add(id);
+    appliedUserIds.value.add(id);
+  }
+  storage.setItem('timeline.selectedGroupIds', JSON.stringify(Array.from(selectedGroupIds.value)));
+  storage.setItem('timeline.selectedUserIds', JSON.stringify(Array.from(selectedUserIds.value)));
+  storage.setItem('timeline.appliedGroupIds', JSON.stringify(Array.from(appliedGroupIds.value)));
+  storage.setItem('timeline.appliedUserIds', JSON.stringify(Array.from(appliedUserIds.value)));
+});
+
+watch(() => auth.userId, (uid) => {
+  if (!uid) return;
+  // On login, select all groups/users by default
+  const details = groupsDetails.value;
+  const allGroupIds = details.map(d => d.id);
+  const allUserIds: string[] = [];
+  for (const d of details) {
+    for (const u of d.members) {
+      if (!allUserIds.includes(u)) allUserIds.push(u);
+    }
+  }
+  selectedGroupIds.value = new Set(allGroupIds);
+  selectedUserIds.value = new Set(allUserIds);
+  appliedGroupIds.value = new Set(allGroupIds);
+  appliedUserIds.value = new Set(allUserIds);
+  storage.setItem('timeline.selectedGroupIds', JSON.stringify(Array.from(selectedGroupIds.value)));
+  storage.setItem('timeline.selectedUserIds', JSON.stringify(Array.from(selectedUserIds.value)));
+  storage.setItem('timeline.appliedGroupIds', JSON.stringify(Array.from(appliedGroupIds.value)));
+  storage.setItem('timeline.appliedUserIds', JSON.stringify(Array.from(appliedUserIds.value)));
 });
 
 async function acceptInvite(groupId: string) {

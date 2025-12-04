@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import { GroupService } from '../api/services';
+import { GroupService, AuthService, type ID } from '../api/services';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -90,10 +90,33 @@ async function createGroup() {
     const res = await GroupService.create(auth.userId, finalName);
     const gid = res.group;
 
-    // 2. Invite users
+    // 2. Invite users (resolve usernames to IDs)
     for (const userIdOrName of selectedUsers.value) {
       try {
-        await GroupService.invite(auth.userId, gid, userIdOrName);
+        let inviteeId: ID | null = null;
+
+        // Try interpreting the entry as a user ID
+        try {
+          const existsRes = await AuthService.userExists(userIdOrName as ID);
+          const exists = Array.isArray(existsRes) ? existsRes[0]?.exists === true : false;
+          if (exists) inviteeId = userIdOrName as ID;
+        } catch {}
+
+        // Otherwise, resolve by username
+        if (!inviteeId) {
+          try {
+            const lookup = await AuthService.getUserByUsername(userIdOrName);
+            const uid = Array.isArray(lookup) ? lookup[0]?.userId : null;
+            if (uid) inviteeId = uid as ID;
+          } catch {}
+        }
+
+        if (!inviteeId) {
+          console.warn(`Skipping invite: could not resolve '${userIdOrName}' to a user ID`);
+          continue;
+        }
+
+        await GroupService.invite(auth.userId, gid, inviteeId);
       } catch (err) {
         console.warn(`Failed to invite ${userIdOrName}:`, err);
       }
@@ -130,12 +153,15 @@ async function createGroup() {
               <button type="button" aria-label="Remove" @click="removeInvite(idx)">×</button>
             </span>
           </div>
-          <input
-            v-model="inviteDraft"
-            type="text"
-            placeholder="Start typing a username or user ID"
-            @keydown="onKeyDown"
-          />
+          <div class="invite-controls">
+            <input
+              v-model="inviteDraft"
+              type="text"
+              placeholder="Start typing a username or user ID"
+              @keydown="onKeyDown"
+            />
+            <button type="button" class="add-invite-btn" @click="addInvite()">Add</button>
+          </div>
           <ul v-if="filteredSuggestions.length" class="suggestions">
             <li
               v-for="(user, idx) in filteredSuggestions"
@@ -205,6 +231,19 @@ async function createGroup() {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.invite-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+.add-invite-btn {
+  background: var(--brown);
+  color: var(--cream);
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
 }
 .chips {
   display: flex;
