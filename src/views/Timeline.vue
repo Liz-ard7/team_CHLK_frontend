@@ -1,12 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { GroupService, MemoryService, type Memory } from '../api/services';
+import { GroupService, MemoryService, AuthService, type Memory } from '../api/services';
 
 const auth = useAuthStore();
+const storage = window.sessionStorage;
 const memories = ref<Memory[]>([]);
 const invitations = ref<any[]>([]);
 const loading = ref(true);
+const groupsDetails = ref<Array<{ id: string; name: string; members: string[] }>>([]);
+const selectedGroupIds = ref<Set<string>>(new Set());
+const selectedUserIds = ref<Set<string>>(new Set());
+const appliedGroupIds = ref<Set<string>>(new Set());
+const appliedUserIds = ref<Set<string>>(new Set());
+const usernamesMap = ref<Record<string, string>>({});
+const filtersDropdownOpen = ref(false);
+const filterMode = ref<'group' | 'user'>('group');
+const uniqueUsersShared = computed<string[]>(() => {
+  const set = new Set<string>();
+  if (auth.userId) set.add(auth.userId);
+  for (const g of groupsDetails.value) {
+    if (auth.userId && g.members.includes(auth.userId)) {
+      for (const u of g.members) set.add(u);
+    }
+  }
+  return Array.from(set);
+});
 
 onMounted(async () => {
   if (!auth.userId) return;
@@ -28,6 +47,34 @@ onMounted(async () => {
     );
     invitations.value = inviteDetails;
 
+    // Fetch group details (names + members) for filtering UI and logic
+    const details = await Promise.all(groupIds.map(async (gid) => {
+      const d = await GroupService.getDetails(gid);
+      const g = d[0];
+      return { id: gid, name: g.groupName, members: g.members };
+    }));
+    groupsDetails.value = details;
+
+    // Resolve usernames for all unique members for display in filters
+    const uniqueMemberIds: string[] = [];
+    for (const g of details) {
+      for (const uid of g.members) {
+        if (!uniqueMemberIds.includes(uid)) uniqueMemberIds.push(uid);
+      }
+    }
+    for (const uid of uniqueMemberIds) {
+      try {
+        const result = await AuthService.getUsername(uid as any);
+        const first = (result && Array.isArray(result)) ? result[0] : undefined;
+        const uname = first && (first as any).username;
+        if (typeof uname === 'string' && uname.length > 0) {
+          (usernamesMap.value as Record<string, string>)[uid] = uname;
+        }
+      } catch (err) {
+        console.warn('Username lookup failed for', uid, err);
+      }
+    }
+
     // 3. Get memories for all groups (Naive implementation for init)
     const allMemories: Memory[] = [];
     for (const gid of groupIds) {
@@ -39,6 +86,25 @@ onMounted(async () => {
       }
     }
     memories.value = allMemories; // In a real app, sort by date/ID
+
+    // Restore filters from sessionStorage or default to 'all'
+    try {
+      const sg = sessionStorage.getItem('timeline.selectedGroupIds');
+      const su = sessionStorage.getItem('timeline.selectedUserIds');
+      const ag = sessionStorage.getItem('timeline.appliedGroupIds');
+      const au = sessionStorage.getItem('timeline.appliedUserIds');
+      const allGroupIds = details.map(d => d.id);
+      const allUserIds: string[] = [];
+      for (const d of details) {
+        for (const u of d.members) {
+          if (!allUserIds.includes(u)) allUserIds.push(u);
+        }
+      }
+      selectedGroupIds.value = new Set(sg ? JSON.parse(sg) : allGroupIds);
+      selectedUserIds.value = new Set(su ? JSON.parse(su) : allUserIds);
+      appliedGroupIds.value = new Set(ag ? JSON.parse(ag) : allGroupIds);
+      appliedUserIds.value = new Set(au ? JSON.parse(au) : allUserIds);
+    } catch {}
   } catch (e) {
     console.error(e);
   } finally {
@@ -97,15 +163,33 @@ const sortedMemories = computed<Memory[]>(() => {
   return arr;
 });
 
+// Filter by selected group or selected user (shared groups with current user)
+const filteredMemories = computed<Memory[]>(() => {
+  let base = sortedMemories.value;
+  if (appliedGroupIds.value.size > 0) {
+    base = base.filter(m => appliedGroupIds.value.has(m.group));
+  }
+  if (appliedUserIds.value.size > 0) {
+    // Access: groups the current user belongs to
+    const myGroupIds = new Set<string>();
+    for (const g of groupsDetails.value) {
+      if (g.members.includes(auth.userId as string)) myGroupIds.add(g.id);
+    }
+    // Filter memories created by selected users AND accessible to current user
+    base = base.filter(m => myGroupIds.has(m.group) && appliedUserIds.value.has(m.creator));
+  }
+  return base;
+});
+
 const timelinePath = computed(() => {
-  if (sortedMemories.value.length === 0) return '';
+  if (filteredMemories.value.length === 0) return '';
   
   const cardHeight = 120;
   const cardSpacing = 20;
   const startX = 40;
   let path = `M ${startX} 0`;
   
-  sortedMemories.value.forEach((_, index) => {
+  filteredMemories.value.forEach((_, index) => {
     const y = index * (cardHeight + cardSpacing) + cardHeight / 2;
     const offsetX = (index % 2 === 0 ? 1 : -1) * 15; // Winding effect
     path += ` Q ${startX + offsetX} ${y - 30} ${startX + offsetX * 2} ${y}`;
@@ -118,6 +202,82 @@ const timelinePath = computed(() => {
 <template>
   <div class="timeline-page">
     <h1>Welcome back, {{ auth.username }}</h1>
+
+    <div class="filters">
+      <div class="dropdown">
+        <button type="button" class="dropdown-toggle" @click="filtersDropdownOpen = !filtersDropdownOpen">
+          Filters
+          <span class="caret">▾</span>
+        </button>
+        <div v-if="filtersDropdownOpen" class="dropdown-menu">
+          <div class="filter-mode">
+            <label class="mode-option">
+              <input type="radio" value="group" v-model="filterMode" />
+              By Group
+            </label>
+            <label class="mode-option">
+              <input type="radio" value="user" v-model="filterMode" />
+              By User
+            </label>
+          </div>
+          <template v-if="filterMode === 'group'">
+            <div class="dropdown-actions">
+              <button type="button" @click="selectedGroupIds = new Set(groupsDetails.map(g => g.id))">Select All</button>
+              <button type="button" @click="selectedGroupIds = new Set()">Deselect All</button>
+            </div>
+            <div class="dropdown-checkboxes">
+              <label v-for="g in groupsDetails" :key="g.id" class="checkbox">
+                <input type="checkbox"
+                       :value="g.id"
+                       :checked="selectedGroupIds.has(g.id)"
+                       @change="(e) => {
+                          const checked = (e.target as HTMLInputElement).checked;
+                          const next = new Set(selectedGroupIds);
+                          if (checked) next.add(g.id); else next.delete(g.id);
+                          selectedGroupIds = next as any;
+                       }"
+                />
+                <span>{{ g.name }}</span>
+              </label>
+            </div>
+          </template>
+          <template v-else>
+            <div class="dropdown-actions">
+              <button type="button" @click="selectedUserIds = new Set(uniqueUsersShared)">Select All</button>
+              <button type="button" @click="selectedUserIds = new Set()">Deselect All</button>
+            </div>
+            <div class="dropdown-checkboxes">
+              <label v-for="u in uniqueUsersShared" :key="u" class="checkbox">
+                <input type="checkbox"
+                       :value="u"
+                       :checked="selectedUserIds.has(u)"
+                       @change="(e) => {
+                          const checked = (e.target as HTMLInputElement).checked;
+                          const next = new Set(selectedUserIds);
+                          if (checked) next.add(u); else next.delete(u);
+                          selectedUserIds = next as any;
+                       }"
+                />
+                <span>{{ usernamesMap[u] || u }}</span>
+              </label>
+            </div>
+          </template>
+          <div class="apply-row">
+            <button type="button" class="apply-btn" @click="(() => {
+              appliedGroupIds = new Set(selectedGroupIds);
+              appliedUserIds = new Set(selectedUserIds);
+              try {
+                storage.setItem('timeline.selectedGroupIds', JSON.stringify(Array.from(selectedGroupIds)));
+                storage.setItem('timeline.selectedUserIds', JSON.stringify(Array.from(selectedUserIds)));
+                storage.setItem('timeline.appliedGroupIds', JSON.stringify(Array.from(appliedGroupIds)));
+                storage.setItem('timeline.appliedUserIds', JSON.stringify(Array.from(appliedUserIds)));
+              } catch {}
+              filtersDropdownOpen = false;
+            })()">Apply Filters</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="content-area">
       <div class="timeline-feed">
@@ -135,12 +295,12 @@ const timelinePath = computed(() => {
             />
           </svg>
           <div 
-            v-for="(mem, index) in sortedMemories" 
+            v-for="(mem, index) in filteredMemories" 
             :key="mem.memoryID" 
             class="memory-card"
             :style="{ 
               transform: `rotate(${getRotation(index)}deg)`,
-              zIndex: sortedMemories.length - index
+              zIndex: filteredMemories.length - index
             }"
           >
             <router-link :to="`/memory/${mem.memoryID}`">
@@ -387,4 +547,20 @@ const timelinePath = computed(() => {
   color: var(--brown);
   font-size: 1.1rem;
 }
+
+.dropdown { position: relative; display: inline-block; margin-right: 12px; }
+.dropdown-toggle { background: var(--olive-green); color: var(--cream); border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.dropdown-toggle .caret { margin-left: 6px; opacity: 0.8; }
+.dropdown-menu { position: absolute; top: calc(100% + 6px); left: 0; background: var(--beige); border: 2px solid var(--olive-green); border-radius: 8px; box-shadow: 0 2px 8px rgba(139,115,85,0.2); padding: 10px; min-width: 240px; z-index: 50; display: flex; flex-direction: column; max-height: 320px; }
+.apply-row { display: flex; justify-content: flex-end; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--olive-green); background: var(--beige); }
+.apply-btn { background: var(--olive-green); color: var(--cream); border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.filter-mode { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.mode-option { display: inline-flex; align-items: center; gap: 6px; }
+.dropdown-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.dropdown-actions button { background: var(--brown); color: var(--cream); border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.dropdown-checkboxes { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-height: 220px; overflow: auto; }
+.checkbox { display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 8px; background: var(--cream); border: 1px solid var(--olive-green); border-radius: 6px; box-sizing: border-box; text-align: left; }
+.checkbox input[type="checkbox"] { margin: 0; }
+.checkbox span { flex: 0 0 auto; text-align: left; }
+.optgroup-label { font-weight: 600; color: var(--brown); margin: 6px 0 4px; }
 </style>
