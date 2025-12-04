@@ -206,4 +206,16 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
 .actions button:hover {
   background: var(--brown);
 }
+
+.contribution button {
+  background: var(--olive-green);
+  color: var(--cream);
+  padding: 12px 24px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.contribution button:hover {
+  background: var(--brown);
+}
 </style>
