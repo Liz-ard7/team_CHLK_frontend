@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import { GroupService, AuthService, type ID } from '../api/services';
+import { GroupService, AuthService } from '../api/services';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -51,7 +51,7 @@ function removeInvite(index: number) {
   selectedUsers.value.splice(index, 1);
 }
 
-function onKeyDown(e: KeyboardEvent) {
+function onKeyDown(e: any) {
   const list = filteredSuggestions.value;
   const validKeys = ['ArrowDown','ArrowUp','Enter','Escape'];
   if (validKeys.indexOf(e.key) !== -1) e.preventDefault();
@@ -93,21 +93,21 @@ async function createGroup() {
     // 2. Invite users (resolve usernames to IDs)
     for (const userIdOrName of selectedUsers.value) {
       try {
-        let inviteeId: ID | null = null;
+        let inviteeId: string | null = null;
 
         // Try interpreting the entry as a user ID
         try {
-          const existsRes = await AuthService.userExists(userIdOrName as ID);
+          const existsRes = await AuthService.userExists(userIdOrName as any);
           const exists = Array.isArray(existsRes) ? existsRes[0]?.exists === true : false;
-          if (exists) inviteeId = userIdOrName as ID;
+          if (exists) inviteeId = userIdOrName as string;
         } catch {}
 
         // Otherwise, resolve by username
         if (!inviteeId) {
           try {
             const lookup = await AuthService.getUserByUsername(userIdOrName);
-            const uid = Array.isArray(lookup) ? lookup[0]?.userId : null;
-            if (uid) inviteeId = uid as ID;
+            const uid = Array.isArray(lookup) ? (lookup[0]?.userId as string | null) : null;
+            if (uid) inviteeId = uid;
           } catch {}
         }
 
