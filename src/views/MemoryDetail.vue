@@ -9,6 +9,7 @@ const auth = useAuthStore();
 const memory = ref<Memory | null>(null);
 const imageUrls = ref<Record<string, string>>({}); // Map object path to signed URL
 const usernames = ref<Record<string, string>>({}); // Map user ID to username
+const deletingIndex = ref<number | null>(null);
 
 onMounted(async () => {
   const res = await MemoryService.get(route.params.id as string);
@@ -76,6 +77,30 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
   if (!imageUrls || imageUrls.trim() === '') return [];
   return imageUrls.split(',').map(url => url.trim()).filter(url => url.length > 0);
 };
+
+const deleteContribution = async (idx: number) => {
+  if (!auth.userId || !memory.value) return;
+  const ok = window.confirm('Delete this contribution? This cannot be undone.');
+  if (!ok) return;
+  try {
+    deletingIndex.value = idx;
+    await MemoryService.deleteContribution(memory.value.memoryID, idx, auth.userId);
+    // Refresh memory and rebuild resources
+    const res = await MemoryService.get(memory.value.memoryID);
+    const first = res?.[0];
+    imageUrls.value = {};
+    usernames.value = {};
+    memory.value = first?.memory ?? null;
+    if (memory.value) {
+      await Promise.all([loadImageUrls(), loadUsernames()]);
+    }
+  } catch (err) {
+    console.error('Failed to delete contribution:', err);
+    alert('Failed to delete contribution.');
+  } finally {
+    deletingIndex.value = null;
+  }
+};
 </script>
 
 <template>
@@ -88,6 +113,13 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
 
     <div class="contributions">
       <div v-for="(c, idx) in memory.contributions" :key="idx" class="contribution">
+        <button
+          v-if="isMyContribution(c.user)"
+          class="delete-contrib-btn"
+          @click="deleteContribution(idx)"
+          :disabled="deletingIndex === idx"
+          title="Delete this contribution"
+        >{{ deletingIndex === idx ? 'Deleting…' : 'Delete' }}</button>
         <div class="user-header">
            <!-- Link to profile -->
            <router-link :to="`/profile/${c.user}`">👤 {{ getUsernameDisplay(c.user) }}</router-link>
@@ -137,6 +169,7 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
   box-shadow: 0 4px 8px rgba(139, 115, 85, 0.15);
   transform: rotate(0.5deg);
   transition: transform 0.3s ease;
+  position: relative;
 }
 
 .contribution:nth-child(even) {
@@ -217,5 +250,23 @@ const getImageUrls = (imageUrls: string | string[]): string[] => {
 
 .contribution button:hover {
   background: var(--brown);
+}
+
+.delete-contrib-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--brown) !important;
+  color: var(--cream);
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+.delete-contrib-btn:hover:not(:disabled) {
+  background: #6b5a42 !important;
+}
+/* Match Cancel button disabled behavior */
+.delete-contrib-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

@@ -70,6 +70,8 @@ export const MemoryService = {
       newDescription: newDesc,
       ...(newImageUrls !== undefined && { newImageUrls })
     }),
+  deleteContribution: (memory: ID, contributionIndex: number, user: ID) =>
+    post('/MemoryEntries/deleteContribution', { memory, contributionIndex, user }),
   editTitle: (memory: ID, user: ID, newTitle: string) => post('/MemoryEntries/editTitle', { memory, user, newTitle }),
   deleteMemory: (memory: ID, creator: ID) => post('/MemoryEntries/deleteMemory', { memory, creator }),
 };
