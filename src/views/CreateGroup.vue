@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { GroupService, AuthService, type ID } from '../api/services';
@@ -12,6 +12,8 @@ const selectedUsers = ref<string[]>([]);
 const suggestionsSource = ref<string[]>([]); // Will be populated via backend
 const highlightedIndex = ref(-1);
 const userEditedName = ref(false);
+const selectionMade = ref(false);
+const suggestionsActive = ref(false);
 
 watch(groupName, (val, old) => {
   if (old !== undefined && val !== `${auth.username}'s group`) {
@@ -26,15 +28,27 @@ watch(() => auth.username, (newName) => {
 });
 
 const filteredSuggestions = computed(() => {
-  const q = inviteDraft.value.trim().toLowerCase();
+  if (!suggestionsActive.value) return [];
+  const qRaw = inviteDraft.value.trim();
+  const q = qRaw.toLowerCase();
   if (!q) return [];
-  return suggestionsSource.value.filter((u: string) =>
-    u.toLowerCase().includes(q) && !selectedUsers.value.includes(u)
+  const base = suggestionsSource.value.length > 0
+    ? suggestionsSource.value
+    : [qRaw];
+  return base.filter((u: string) =>
+    u.toLowerCase().startsWith(q) && !selectedUsers.value.includes(u)
   ).slice(0, 10);
 });
 
 watch(inviteDraft, (v) => {
   if (!v.trim()) highlightedIndex.value = -1;
+  if (selectionMade.value) {
+    // Suppress re-opening suggestions due to programmatic fill
+    suggestionsActive.value = false;
+    selectionMade.value = false;
+  } else {
+    suggestionsActive.value = !!v.trim();
+  }
 });
 
 function addInvite(value?: string) {
@@ -45,6 +59,7 @@ function addInvite(value?: string) {
   if (!selectedUsers.value.includes(final)) selectedUsers.value.push(final);
   inviteDraft.value = '';
   highlightedIndex.value = -1;
+  suggestionsActive.value = false;
 }
 
 function removeInvite(index: number) {
@@ -77,8 +92,20 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function selectSuggestion(user: string) {
+  selectionMade.value = true;
   addInvite(user);
 }
+
+// Load all usernames to enable live suggestions while typing
+onMounted(async () => {
+  try {
+    const res = await AuthService.getAllUsernames();
+    const names = Array.isArray(res) ? res.map(r => r.username).filter(Boolean) as string[] : [];
+    suggestionsSource.value = names;
+  } catch (e) {
+    console.warn('Failed to load usernames for suggestions', e);
+  }
+});
 
 async function createGroup() {
   if (!auth.userId) return;
