@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { GroupService, AuthService, type ID } from '../api/services';
 
+// Provide component options for tooling; still uses <script setup>
+defineOptions({ name: 'CreateGroup' });
+
 const auth = useAuthStore();
 const router = useRouter();
 const groupName = ref('');
