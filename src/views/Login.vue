@@ -25,11 +25,9 @@ const handleLogin = async () => {
   <div class="auth-page">
     <h1>Login</h1>
     <p v-if="error" class="error">{{ error }}</p>
-    <form @submit.prevent="handleLogin">
-      <input v-model="username" name="username" autocomplete="username" placeholder="Username" />
-      <input type="password" v-model="password" name="password" autocomplete="current-password" placeholder="Password" />
-      <button type="submit">Login</button>
-    </form>
+    <input v-model="username" placeholder="Username" />
+    <input type="password" v-model="password" placeholder="Password" />
+    <button @click="handleLogin">Login</button>
     <div class="footer">
       <router-link to="/register">Register New Account</router-link>
     </div>
