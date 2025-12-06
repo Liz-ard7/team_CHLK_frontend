@@ -162,6 +162,8 @@ async function createGroup() {
 }
 </script>
 
+
+
 <template>
   <div class="create-group">
     <h1>Create a Group</h1>

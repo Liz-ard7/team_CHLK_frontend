@@ -127,6 +127,8 @@ const handleInvite = async () => {
 };
 </script>
 
+
+
 <template>
   <div v-if="group" class="group-detail">
     <h1>{{ group.groupName }}</h1> <!-- Click to edit title impl left as exercise -->
