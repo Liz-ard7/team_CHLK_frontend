@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { GroupService, AuthService, type ID } from '../api/services';
@@ -12,8 +12,6 @@ const selectedUsers = ref<string[]>([]);
 const suggestionsSource = ref<string[]>([]); // Will be populated via backend
 const highlightedIndex = ref(-1);
 const userEditedName = ref(false);
-const selectionMade = ref(false);
-const suggestionsActive = ref(false);
 
 watch(groupName, (val, old) => {
   if (old !== undefined && val !== `${auth.username}'s group`) {
@@ -27,32 +25,16 @@ watch(() => auth.username, (newName) => {
   }
 });
 
-// Query helpers for suggestions
-const qRaw = computed(() => inviteDraft.value.trim());
-const q = computed(() => qRaw.value.toLowerCase());
-
-// Live filtered suggestions (prefix match, exclude already selected)
 const filteredSuggestions = computed(() => {
-  if (!suggestionsActive.value) return [];
-  if (!q.value) return [];
-  const base = suggestionsSource.value.length > 0
-    ? suggestionsSource.value
-    : [qRaw.value];
-  return base.filter((u: string) =>
-    u.toLowerCase().startsWith(q.value) && !selectedUsers.value.includes(u)
+  const q = inviteDraft.value.trim().toLowerCase();
+  if (!q) return [];
+  return suggestionsSource.value.filter((u: string) =>
+    u.toLowerCase().includes(q) && !selectedUsers.value.includes(u)
   ).slice(0, 10);
 });
 
-
 watch(inviteDraft, (v) => {
   if (!v.trim()) highlightedIndex.value = -1;
-  if (selectionMade.value) {
-    // Suppress re-opening suggestions due to programmatic fill
-    suggestionsActive.value = false;
-    selectionMade.value = false;
-  } else {
-    suggestionsActive.value = !!v.trim();
-  }
 });
 
 function addInvite(value?: string) {
@@ -63,7 +45,6 @@ function addInvite(value?: string) {
   if (!selectedUsers.value.includes(final)) selectedUsers.value.push(final);
   inviteDraft.value = '';
   highlightedIndex.value = -1;
-  suggestionsActive.value = false;
 }
 
 function removeInvite(index: number) {
@@ -92,25 +73,12 @@ function onKeyDown(e: KeyboardEvent) {
   } else if (e.key === 'Escape') {
     inviteDraft.value = '';
     highlightedIndex.value = -1;
-    suggestionsActive.value = false;
   }
 }
 
 function selectSuggestion(user: string) {
-  selectionMade.value = true;
   addInvite(user);
 }
-
-// Load all usernames to enable live suggestions while typing
-onMounted(async () => {
-  try {
-    const res = await AuthService.getAllUsernames();
-    const names = Array.isArray(res) ? res.map(r => r.username).filter(Boolean) as string[] : [];
-    suggestionsSource.value = names;
-  } catch (e) {
-    console.warn('Failed to load usernames for suggestions', e);
-  }
-});
 
 async function createGroup() {
   if (!auth.userId) return;
@@ -162,8 +130,6 @@ async function createGroup() {
 }
 </script>
 
-
-
 <template>
   <div class="create-group">
     <h1>Create a Group</h1>
@@ -193,25 +159,14 @@ async function createGroup() {
               type="text"
               placeholder="Start typing a username or user ID"
               @keydown="onKeyDown"
-              @keydown.enter.prevent
-              @blur="suggestionsActive = false"
-              role="combobox"
-              aria-autocomplete="list"
-              :aria-expanded="suggestionsActive"
-              aria-controls="suggestions-list"
-              :aria-activedescendant="highlightedIndex >= 0 ? `suggestion-${highlightedIndex}` : undefined"
-              @focus="suggestionsActive = !!inviteDraft.trim()"
             />
             <button type="button" class="add-invite-btn" @click="addInvite()">Add</button>
           </div>
-          <ul v-if="suggestionsActive && filteredSuggestions.length" class="suggestions" role="listbox" id="suggestions-list">
+          <ul v-if="filteredSuggestions.length" class="suggestions">
             <li
               v-for="(user, idx) in filteredSuggestions"
               :key="user"
               :class="['suggestion', { highlighted: idx === highlightedIndex }]"
-              role="option"
-              :id="`suggestion-${idx}`"
-              :aria-selected="idx === highlightedIndex"
               @mousedown.prevent="selectSuggestion(user)"
             >{{ user }}</li>
           </ul>

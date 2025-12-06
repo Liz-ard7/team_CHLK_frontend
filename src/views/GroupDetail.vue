@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { GroupService, AuthService, type GroupDetails } from '../api/services';
 import { useAuthStore } from '../stores/auth';
@@ -8,10 +8,6 @@ const route = useRoute();
 const auth = useAuthStore();
 const group = ref<GroupDetails | null>(null);
 const inviteUser = ref('');
-const suggestionsSource = ref<string[]>([]);
-const highlightedIndex = ref(-1);
-const suggestionsActive = ref(false);
-const selectionMade = ref(false);
 const memberUsernames = ref<Record<string, string>>({}); // Map user ID to username
 
 onMounted(async () => {
@@ -22,19 +18,11 @@ onMounted(async () => {
     // Fetch usernames for all members
     await loadMemberUsernames();
   }
-  // Load all usernames for suggestions
-  try {
-    const all = await AuthService.getAllUsernames();
-    const names = Array.isArray(all) ? all.map(r => r.username).filter(Boolean) as string[] : [];
-    suggestionsSource.value = names;
-  } catch (e) {
-    console.warn('Failed to load usernames for suggestions', e);
-  }
 });
 
-// Load usernames for current group's members
 const loadMemberUsernames = async () => {
   if (!group.value) return;
+  
   for (const userId of group.value.members) {
     try {
       const result = await AuthService.getUsername(userId as any);
@@ -54,80 +42,26 @@ const getUsernameDisplay = (userId: string): string => {
   return memberUsernames.value[userId] || userId;
 };
 
-// Suggestions for inviting by username
-const filteredSuggestions = computed(() => {
-  if (!suggestionsActive.value) return [];
-  const qRaw = inviteUser.value.trim();
-  const q = qRaw.toLowerCase();
-  if (!q) return [];
-  const base = suggestionsSource.value.length > 0 ? suggestionsSource.value : [qRaw];
-  return base
-    .filter(u => u.toLowerCase().startsWith(q))
-    .slice(0, 10);
-});
-
-watch(inviteUser, (v) => {
-  if (!v.trim()) highlightedIndex.value = -1;
-  if (selectionMade.value) {
-    // Suppress re-opening suggestions due to programmatic fill
-    suggestionsActive.value = false;
-    selectionMade.value = false;
-  } else {
-    suggestionsActive.value = !!v.trim();
-  }
-});
-
-function selectSuggestion(user: string) {
-  selectionMade.value = true;
-  inviteUser.value = user;
-  suggestionsActive.value = false;
-}
-
-function onKeyDown(e: KeyboardEvent) {
-  const list = filteredSuggestions.value;
-  const validKeys = ['ArrowDown','ArrowUp','Enter','Escape'];
-  if (validKeys.indexOf(e.key) !== -1) e.preventDefault();
-  if (e.key === 'ArrowDown') {
-    if (!list.length) return;
-    highlightedIndex.value = (highlightedIndex.value + 1) % list.length;
-  } else if (e.key === 'ArrowUp') {
-    if (!list.length) return;
-    highlightedIndex.value = (highlightedIndex.value - 1 + list.length) % list.length;
-  } else if (e.key === 'Enter') {
-    const sel = highlightedIndex.value >= 0 ? list[highlightedIndex.value] : undefined;
-    if (typeof sel === 'string') {
-      selectSuggestion(sel);
-    }
-  } else if (e.key === 'Escape') {
-    highlightedIndex.value = -1;
-  }
-}
-
 const handleInvite = async () => {
-  if(!auth.userId) return;
+    if(!auth.userId) return;
 
-  // Resolve to user ID: try exact username lookup first
-  const draft = inviteUser.value.trim();
-  if (!draft) return;
-  try {
-    const lookup = await AuthService.getUserByUsername(draft);
-    const userIdToInvite = Array.isArray(lookup) ? lookup[0]?.userId : undefined;
+    // Look up the user ID by username
+    const userLookup = await AuthService.getUserByUsername(inviteUser.value.trim());
+    if (userLookup.length === 0) {
+        alert('User not found!');
+        return;
+    }
+
+    const userIdToInvite = userLookup[0]?.userId;
     if (!userIdToInvite) {
-      alert('User not found!');
-      return;
+        alert('User not found!');
+        return;
     }
     await GroupService.invite(auth.userId, route.params.id as string, userIdToInvite);
     alert('Invited!');
     inviteUser.value = '';
-    suggestionsActive.value = false;
-  } catch (e) {
-    alert('Failed to invite user');
-    console.error(e);
-  }
-};
+}
 </script>
-
-
 
 <template>
   <div v-if="group" class="group-detail">
@@ -142,17 +76,7 @@ const handleInvite = async () => {
 
     <div class="invite-section">
         <h3>Add Member</h3>
-        <div class="invite-input-wrapper">
-          <input v-model="inviteUser" placeholder="Username/ID" @keydown="onKeyDown" />
-          <ul v-if="filteredSuggestions.length" class="suggestions">
-            <li
-              v-for="(user, idx) in filteredSuggestions"
-              :key="user"
-              :class="['suggestion', { highlighted: idx === highlightedIndex }]"
-              @mousedown.prevent="selectSuggestion(user)"
-            >{{ user }}</li>
-          </ul>
-        </div>
+        <input v-model="inviteUser" placeholder="Username/ID" />
         <button @click="handleInvite">Invite</button>
     </div>
   </div>
@@ -247,19 +171,4 @@ const handleInvite = async () => {
 .invite-section button:hover {
   background: var(--brown);
 }
-.invite-input-wrapper { display: flex; flex-direction: column; gap: 0.5rem; }
-.suggestions {
-  list-style: none;
-  margin: 0 0 20px 0;
-  padding: 0;
-  border: 2px solid var(--olive-green);
-  border-radius: 6px;
-  background: var(--cream);
-  max-height: 180px;
-  overflow-y: auto;
-  box-shadow: 0 2px 6px rgba(139, 115, 85, 0.2);
-}
-.suggestion { padding: 0.4rem 0.6rem; cursor: pointer; font-size: 0.85rem; color: var(--brown); }
-.suggestion:hover,
-.suggestion.highlighted { background: var(--lime-green); }
 </style>
