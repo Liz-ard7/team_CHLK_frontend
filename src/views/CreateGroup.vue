@@ -2,10 +2,9 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import { GroupService, AuthService, type ID } from '../api/services';
+import { GroupService, AuthService } from '../api/services';
 
 // Provide component options for tooling; still uses <script setup>
-defineOptions({ name: 'CreateGroup' });
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -96,13 +95,13 @@ async function createGroup() {
     // 2. Invite users (resolve usernames to IDs)
     for (const userIdOrName of selectedUsers.value) {
       try {
-        let inviteeId: ID | null = null;
+        let inviteeId: string | null = null;
 
         // Try interpreting the entry as a user ID
         try {
-          const existsRes = await AuthService.userExists(userIdOrName as ID);
+          const existsRes = await AuthService.userExists(userIdOrName as string);
           const exists = Array.isArray(existsRes) ? existsRes[0]?.exists === true : false;
-          if (exists) inviteeId = userIdOrName as ID;
+          if (exists) inviteeId = userIdOrName as string;
         } catch {}
 
         // Otherwise, resolve by username
@@ -110,7 +109,7 @@ async function createGroup() {
           try {
             const lookup = await AuthService.getUserByUsername(userIdOrName);
             const uid = Array.isArray(lookup) ? lookup[0]?.userId : null;
-            if (uid) inviteeId = uid as ID;
+            if (uid) inviteeId = uid as string;
           } catch {}
         }
 
