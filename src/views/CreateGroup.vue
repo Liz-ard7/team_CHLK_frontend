@@ -27,18 +27,22 @@ watch(() => auth.username, (newName) => {
   }
 });
 
+// Query helpers for suggestions
+const qRaw = computed(() => inviteDraft.value.trim());
+const q = computed(() => qRaw.value.toLowerCase());
+
+// Live filtered suggestions (prefix match, exclude already selected)
 const filteredSuggestions = computed(() => {
   if (!suggestionsActive.value) return [];
-  const qRaw = inviteDraft.value.trim();
-  const q = qRaw.toLowerCase();
-  if (!q) return [];
+  if (!q.value) return [];
   const base = suggestionsSource.value.length > 0
     ? suggestionsSource.value
-    : [qRaw];
+    : [qRaw.value];
   return base.filter((u: string) =>
-    u.toLowerCase().startsWith(q) && !selectedUsers.value.includes(u)
+    u.toLowerCase().startsWith(q.value) && !selectedUsers.value.includes(u)
   ).slice(0, 10);
 });
+
 
 watch(inviteDraft, (v) => {
   if (!v.trim()) highlightedIndex.value = -1;
@@ -88,6 +92,7 @@ function onKeyDown(e: KeyboardEvent) {
   } else if (e.key === 'Escape') {
     inviteDraft.value = '';
     highlightedIndex.value = -1;
+    suggestionsActive.value = false;
   }
 }
 
@@ -157,10 +162,6 @@ async function createGroup() {
 }
 </script>
 
-<script lang="ts">
-export default {};
-</script>
-
 <template>
   <div class="create-group">
     <h1>Create a Group</h1>
@@ -190,14 +191,25 @@ export default {};
               type="text"
               placeholder="Start typing a username or user ID"
               @keydown="onKeyDown"
+              @keydown.enter.prevent
+              @blur="suggestionsActive = false"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-expanded="suggestionsActive"
+              aria-controls="suggestions-list"
+              :aria-activedescendant="highlightedIndex >= 0 ? `suggestion-${highlightedIndex}` : undefined"
+              @focus="suggestionsActive = !!inviteDraft.trim()"
             />
             <button type="button" class="add-invite-btn" @click="addInvite()">Add</button>
           </div>
-          <ul v-if="filteredSuggestions.length" class="suggestions">
+          <ul v-if="suggestionsActive && filteredSuggestions.length" class="suggestions" role="listbox" id="suggestions-list">
             <li
               v-for="(user, idx) in filteredSuggestions"
               :key="user"
               :class="['suggestion', { highlighted: idx === highlightedIndex }]"
+              role="option"
+              :id="`suggestion-${idx}`"
+              :aria-selected="idx === highlightedIndex"
               @mousedown.prevent="selectSuggestion(user)"
             >{{ user }}</li>
           </ul>

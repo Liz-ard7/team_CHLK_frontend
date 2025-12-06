@@ -32,9 +32,9 @@ onMounted(async () => {
   }
 });
 
+// Load usernames for current group's members
 const loadMemberUsernames = async () => {
   if (!group.value) return;
-  
   for (const userId of group.value.members) {
     try {
       const result = await AuthService.getUsername(userId as any);
@@ -54,6 +54,7 @@ const getUsernameDisplay = (userId: string): string => {
   return memberUsernames.value[userId] || userId;
 };
 
+// Suggestions for inviting by username
 const filteredSuggestions = computed(() => {
   if (!suggestionsActive.value) return [];
   const qRaw = inviteUser.value.trim();
@@ -103,29 +104,27 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 const handleInvite = async () => {
-    if(!auth.userId) return;
+  if(!auth.userId) return;
 
-    // Look up the user ID by username
-    const userLookup = await AuthService.getUserByUsername(inviteUser.value.trim());
-    if (userLookup.length === 0) {
-        alert('User not found!');
-        return;
-    }
-
-    const userIdToInvite = userLookup[0]?.userId;
+  // Resolve to user ID: try exact username lookup first
+  const draft = inviteUser.value.trim();
+  if (!draft) return;
+  try {
+    const lookup = await AuthService.getUserByUsername(draft);
+    const userIdToInvite = Array.isArray(lookup) ? lookup[0]?.userId : undefined;
     if (!userIdToInvite) {
-        alert('User not found!');
-        return;
+      alert('User not found!');
+      return;
     }
     await GroupService.invite(auth.userId, route.params.id as string, userIdToInvite);
     alert('Invited!');
     inviteUser.value = '';
     suggestionsActive.value = false;
-}
-</script>
-
-<script lang="ts">
-export default {};
+  } catch (e) {
+    alert('Failed to invite user');
+    console.error(e);
+  }
+};
 </script>
 
 <template>
