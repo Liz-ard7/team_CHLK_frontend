@@ -12,6 +12,7 @@ const selectedUsers = ref<string[]>([]);
 const suggestionsSource = ref<string[]>([]); // Will be populated via backend
 const highlightedIndex = ref(-1);
 const userEditedName = ref(false);
+const suggestionsActive = ref(false);
 
 watch(groupName, (val, old) => {
   if (old !== undefined && val !== `${auth.username}'s group`) {
@@ -27,14 +28,16 @@ watch(() => auth.username, (newName) => {
 
 const filteredSuggestions = computed(() => {
   const q = inviteDraft.value.trim().toLowerCase();
-  if (!q) return [];
+  if (!suggestionsActive.value || !q) return [];
   return suggestionsSource.value.filter((u: string) =>
-    u.toLowerCase().includes(q) && !selectedUsers.value.includes(u)
+    u.toLowerCase().startsWith(q) && !selectedUsers.value.includes(u)
   ).slice(0, 10);
 });
 
 watch(inviteDraft, (v) => {
-  if (!v.trim()) highlightedIndex.value = -1;
+  const hasText = !!v.trim();
+  if (!hasText) highlightedIndex.value = -1;
+  suggestionsActive.value = hasText;
 });
 
 function addInvite(value?: string) {
@@ -79,6 +82,18 @@ function onKeyDown(e: KeyboardEvent) {
 function selectSuggestion(user: string) {
   addInvite(user);
 }
+
+// Load all usernames to enable live suggestions while typing
+import { onMounted } from 'vue';
+onMounted(async () => {
+  try {
+    const res = await AuthService.getAllUsernames();
+    const names = Array.isArray(res) ? res.map(r => r.username).filter(Boolean) as string[] : [];
+    suggestionsSource.value = names;
+  } catch (e) {
+    console.warn('Failed to load usernames for suggestions', e);
+  }
+});
 
 async function createGroup() {
   if (!auth.userId) return;
@@ -159,10 +174,11 @@ async function createGroup() {
               type="text"
               placeholder="Start typing a username or user ID"
               @keydown="onKeyDown"
+              @blur="suggestionsActive = false"
             />
             <button type="button" class="add-invite-btn" @click="addInvite()">Add</button>
           </div>
-          <ul v-if="filteredSuggestions.length" class="suggestions">
+          <ul v-if="suggestionsActive && filteredSuggestions.length" class="suggestions">
             <li
               v-for="(user, idx) in filteredSuggestions"
               :key="user"
