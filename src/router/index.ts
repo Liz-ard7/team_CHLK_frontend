@@ -7,7 +7,7 @@ import Timeline from '../views/Timeline.vue';
 import MemoryDetail from '../views/MemoryDetail.vue';
 import CreateMemory from '../views/CreateMemory.vue';
 import EditMemory from '../views/EditMemory.vue';
-import GroupDetail from '../views/GroupDetail.vue';
+const GroupDetail = () => import('../views/GroupDetail.vue');
 const CreateGroup = () => import('../views/CreateGroup.vue');
 import YourGroups from '../views/YourGroups.vue';
 import Profile from '../views/Profile.vue';
