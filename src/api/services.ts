@@ -73,7 +73,7 @@ export const MemoryService = {
   deleteContribution: (memory: ID, contributionIndex: number, user: ID) =>
     post('/MemoryEntries/deleteContribution', { memory, contributionIndex, user }),
   editTitle: (memory: ID, user: ID, newTitle: string) => post('/MemoryEntries/editTitle', { memory, user, newTitle }),
-  deleteMemory: (memory: ID, creator: ID) => post('/MemoryEntries/deleteMemory', { memory, creator }),
+  deleteMemory: (memory: ID, user: ID) => post('/MemoryEntries/deleteMemory', { memory, user }),
 };
 
 // --- Image Storage ---
